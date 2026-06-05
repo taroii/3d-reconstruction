@@ -31,6 +31,24 @@ We also mapped the honest boundaries (`diagnostics.py`):
 | **Static-dominance precondition** | localization collapses once static points stop dominating (sharp transition at static = dynamic) | this **is** the generative assumption a localization theorem needs: *static scene + rigid camera + moving objects*, with separation controlled by the static fraction. |
 | **Noise floor** | harmonic cannot remove per-measurement noise (it isn't pose-explainable) | the method buys invariance to **drift**, not to **noise**; both fail once noise rivals the motion. |
 
+## Robustness sub-experiments (`experiments_robustness.py`)
+
+Each boundary above, tested independently in the controlled setting — and, where
+possible, *mitigated*. All four pass. (The combined "everything at once"
+experiment is deliberately deferred until each holds on its own.)
+
+| # | Sub-experiment | Result | Figure |
+|---|---|---|---|
+| 1 | **Multiple moving objects** | three objects each localize at AUROC 1.00; holds even past 50% *total* dynamic when split into small objects. The real precondition is "static is the largest single coherent rigid group," not "static > all dynamic." | `robust_multi.png` |
+| 2 | **Robust gauge anchoring** | an IRLS (Huber) reweighting lets the static majority pin the gauge: AUROC ≈ 1.0 down to static fraction **0.56**, where the plain least-squares solve has already fallen to 0.72. Neither beats the fundamental 0.50 symmetry barrier (you can't tell scene from object when they're equal coherent groups). | `robust_anchor.png` |
+| 3 | **Iterated Gauss–Newton** | re-linearizing (Remark 1's outer loop) fully recovers the large-pose-error regime: iterated AUROC = 1.00 up to drift 1.0 rad/step where single-shot has collapsed to chance; converges in ≈2 iterations. The linearization is controlled. | `robust_iterated.png` |
+| 4 | **Scale-gauge validation** | localization is *exactly* invariant to random global similarity (AUROC max-dev 0; energy rescales by $s_g^2$), and per-view scale drift is absorbed as consistent (harmonic AUROC 1.0 while the raw residual falls to chance). | `robust_scale.png` |
+
+Net effect on the caveats: the scale gauge is closed (anchor + validated
+invariance), the linearization concern is closed (iterated GN), and the
+static-dominance precondition is both sharpened (it's about the largest coherent
+group) and pushed to its symmetry limit (robust anchoring).
+
 **Headline figures** (`python make_figures.py`), the two beats of the story:
 
 - `figures/story_localization.png` — *truth → raw residual (BA) → harmonic H¹
@@ -94,6 +112,9 @@ python run_experiment.py
 
 # supplementary diagnostics: scale collapse, failure boundaries
 python diagnostics.py
+
+# robustness sub-experiments addressing the three caveats (writes robust_*.png)
+python experiments_robustness.py
 ```
 
 Everything is seeded (`numpy.random.default_rng`) and deterministic. Total
@@ -106,6 +127,7 @@ runtime is a few seconds.
 | `sheaf_poc.py` | core library: SE(3)/Sim(3) helpers, synthetic scene, sheaf assembly, harmonic projection, metrics |
 | `run_experiment.py` | the experiment: cases A (clean) / B (drift) / C (drift sweep) / D (static-fraction sweep), figures, verdict |
 | `make_figures.py` | the two headline story figures (localization triptych, drift-invariance curve) |
+| `experiments_robustness.py` | the four robustness sub-experiments (multi-object, robust anchoring, iterated GN, scale-gauge) |
 | `diagnostics.py` | supplementary: Sim(3) scale-collapse demo and the three failure boundaries |
 | `environment.yml` | conda spec for the `sheaf-poc` env |
 | `figures/` | generated PNGs (regenerated on every run) |

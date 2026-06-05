@@ -547,46 +547,68 @@ signal is, empirically, invariant to the camera drift that defeats the raw
 residual.
 
 % --------------------------------------------------------------------
-\subsection{Honest boundaries}
+\subsection{Stress-testing the boundaries}
 \label{sec:exp-boundaries}
 % --------------------------------------------------------------------
 
-The experiment also makes three limitations concrete, each of which sharpens the
-theory to be built.
+The clean result of Section~\ref{sec:exp-results} also exposes three structural
+vulnerabilities of the estimator: (i)~the global scale gauge of the $\Sim(3)$
+coordinate model, (ii)~a reliance on static-scene dominance to pin the remaining
+gauge, and (iii)~a coboundary that is only first-order in the pose corrections.
+Each is a property of the estimator, not of any pairwise predictor, so each can
+be isolated and tested where ground truth is known and a solve costs
+seconds---before incurring the confounds of real data. We do so, applying a
+mitigation wherever one exists, and then validate the combined system on a scene
+that stacks all three stressors (Figure~\ref{fig:combined}).
 
-\paragraph{The global scale gauge must be anchored.}
-The coordinate residual $w^i_k-w^j_k$ is not invariant under a global rescaling
-of the reconstruction, so the uniform log-scale direction of the $\Sim(3)$
-stalks is a coboundary that shrinks the world toward a point and annihilates
-\emph{every} residual, the obstruction included; left free, it drives the
-harmonic energy and the localization AUROC to zero. Anchoring the global scale
-(one linear constraint pinning $\sum_v$ of the per-view log-scales) removes this
-mode and restores the result. This is the metric-scale gauge of $\Sim(3)$
-reconstruction surfacing in the spectral picture, and it should be stated
-alongside the non-abelian subtlety of Remark~\ref{rem:subtleties}.
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\linewidth]{figs/combined.png}
+  \caption{\textbf{All boundaries stressed at once.} A scene with three moving
+  objects, static fraction $0.56$, accumulating camera drift ($0.45$ rad/step),
+  and per-view $\Sim(3)$ scale ambiguity. \emph{Left:} harmonic energy from the
+  full solver, concentrated on all three objects (colored rings; AUROC $1.00$).
+  \emph{Right:} localization AUROC on the same data under three readings (mean
+  $\pm$ s.d., $6$ seeds): the bundle-adjustment residual is at chance, a naive
+  single solve is degraded and high-variance, and the full robust, iterated,
+  scale-anchored method is near-perfect.}
+  \label{fig:combined}
+\end{figure}
 
-\paragraph{Localization presumes a static-dominant scene.}
-The static background is what pins the remaining gauge: it is the data that fixes
-the per-view frames, leaving the moving object as the unexplained residual. As
-the static fraction falls, this anchoring weakens, and localization degrades
-sharply once moving points cease to be a minority---past the point where static
-and dynamic points are equinumerous, the projection can no longer tell which is
-the scene and which is the object, and the AUROC collapses. This is precisely
-the generative assumption---static scene, rigid camera, moving objects as a
-minority---that a localization theorem for $\Hcoh^1$ would need to state, now
-made empirically concrete, with the static fraction as the natural control
-parameter for a separation bound.
+\paragraph{Scale gauge (closed).}
+The coordinate residual $w^i_k-w^j_k$ is not scale-invariant, so the uniform
+log-scale direction is a coboundary that contracts the reconstruction to a point
+and annihilates \emph{every} residual---the obstruction included---driving the
+AUROC to zero. A single linear constraint pinning the mean log-scale removes it.
+With the gauge anchored, localization is exactly invariant to a random global
+similarity (AUROC unchanged to machine precision; harmonic energy rescaling as
+$s_g^2$), and per-view scale drift is absorbed as consistent (harmonic AUROC
+$1.00$ against a raw residual at chance). This is the metric-scale gauge of
+$\Sim(3)$ surfacing in the spectral picture, and belongs beside
+Remark~\ref{rem:subtleties}.
 
-\paragraph{The linearization is valid in pose error, not object motion.}
-Because object motion enters only through the (exactly computed) residual
-$r^0$, while the linearization is in the \emph{pose corrections} $\xi$, the
-familiar ``large motion breaks the tangent approximation'' concern attaches to
-the magnitude of pose error, not to how fast the object moves. Empirically the
-harmonic localization is invariant to camera drift up to large per-step
-magnitudes and degrades only at extreme drift, far outside any realistic regime;
-the valid operating window is wide. Conversely, the projection removes only
-pose-explainable disagreement, so it offers no protection against per-pixel
-measurement noise---both readings fail once noise rivals the object's motion.
+\paragraph{Linearization (controlled by iteration).}
+Because object motion enters only through the exactly-computed residual $r^0$
+while the linearization is in the pose corrections $\xi$, the ``large motion''
+concern attaches to pose-error magnitude, not object speed. A single
+linearization already localizes up to large drift and fails only at the extreme;
+re-linearizing---the sheaf-valued Gauss--Newton of
+Remark~\ref{rem:subtleties}---removes even that, holding AUROC $1.00$ to a drift
+of $1.0$ rad/step (where the single solve has collapsed to chance) and
+converging in two iterations. The projection suppresses only pose-explainable
+disagreement, so measurement noise, which is not, sets the ultimate floor.
+
+\paragraph{Static dominance (sharpened, then extended).}
+The static background pins the remaining gauge, so the precondition is not a
+bound on the total moving fraction but on the largest single coherent group:
+several small objects are each recovered even when together they exceed half the
+scene, since none rivals the static set. For one large object the least-squares
+solve degrades as its share grows, but a robust (IRLS) reweighting lets the
+static majority pin the gauge, holding localization down to a static fraction of
+$\approx\!0.55$---the symmetry limit at which scene and object become
+indistinguishable. The separation bound a localization theorem must supply is
+thus governed by the dominance of the static group, not by the raw moving
+fraction.
 
 % --------------------------------------------------------------------
 \subsection{Scope}
@@ -600,10 +622,11 @@ it isolate the sheaf machinery from prediction quality. It establishes that
 $\Hcoh^1$ provably localizes scene dynamics and does so with an invariance to
 pose drift that the raw residual lacks. It does not yet establish that a real
 pointmap network's residuals meet that bar, nor does it treat occlusion---which
-is missing data rather than inconsistency and warrants its own
-test---and the static-dominance precondition remains a conjecture awaiting the
-separation bound. Validating the construction on $\mathrm{D}^2$USt3R predictions
-for a real dynamic clip is the immediate next step.
+is missing data rather than inconsistency and warrants its own test. A formal
+separation bound for the static-dominance precondition, now characterized and
+mitigated empirically (Section~\ref{sec:exp-boundaries}), likewise remains open.
+Validating the construction on $\mathrm{D}^2$USt3R predictions for a real
+dynamic clip is the immediate next step.
 
 % ====================================================================
 \bibliographystyle{abbrvnat}
