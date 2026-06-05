@@ -1,0 +1,23 @@
+# Lightweight environment for the Sheaf Reconstruction proof-of-concept.
+#
+# This env is intentionally minimal: the falsification experiment needs no
+# deep-learning stack (no torch / CUDA). It runs on CPU in seconds.
+#
+# For the *later* real-data path (extracting pairwise pointmaps from the
+# D^2USt3R network), use the separate, heavier `ddust3r` env described in
+# ../DDUSt3R/README.md. The two are deliberately kept apart so the cheap
+# theory test stays cheap and reproducible.
+#
+# Create/update with:
+#   conda env create -f environment.yml
+#   conda activate sheaf-poc
+#
+name: sheaf-poc
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - numpy>=1.26
+  - scipy>=1.11        # sparse coboundary + lsqr for the harmonic projection
+  - matplotlib>=3.8    # figures
+  - pip

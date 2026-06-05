@@ -1,0 +1,613 @@
+\documentclass{article}
+\usepackage{arxiv}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{hyperref}
+\usepackage{url}
+\usepackage{booktabs}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{amsmath}
+\usepackage{amsthm}
+\usepackage{mathtools}
+\usepackage{bm}
+\usepackage{microtype}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{enumitem}
+\usepackage{natbib}
+
+% --------------------------------------------------------------------
+%  Macros
+% --------------------------------------------------------------------
+\newcommand{\R}{\mathbb{R}}
+\DeclareMathOperator{\SE}{SE}
+\DeclareMathOperator{\Sim}{Sim}
+\DeclareMathOperator{\SO}{SO}
+\DeclareMathOperator{\img}{im}
+\DeclareMathOperator{\rank}{rank}
+\DeclareMathOperator{\spann}{span}
+\newcommand{\norm}[1]{\left\lVert #1 \right\rVert}
+\newcommand{\inner}[2]{\left\langle #1,\, #2 \right\rangle}
+\newcommand{\sheaf}{\mathcal{F}}
+\newcommand{\Cochain}{C}
+\newcommand{\Lap}{\mathbf{L}}
+\newcommand{\coboundary}{\delta}
+\newcommand{\restr}[2]{\sheaf_{#1 \,\trianglelefteq\, #2}}
+\newcommand{\Sections}{\Gamma}
+\newcommand{\Hcoh}{H}
+\newcommand{\todo}[1]{\textcolor{red}{[TODO: #1]}}
+
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}
+\theoremstyle{plain}
+\newtheorem{theorem}{Theorem}
+\newtheorem{proposition}{Proposition}
+\newtheorem{lemma}{Lemma}
+\theoremstyle{remark}
+\newtheorem{remark}{Remark}
+
+% --------------------------------------------------------------------
+\title{Sheaf Reconstruction: Cohomological Consistency for\\
+       Multi-View Pointmap Fusion in Dynamic Scenes}
+
+\author{%
+  Author One \\
+  Department / Institution \\
+  \texttt{author1@institution.edu} \\
+  \And
+  Author Two \\
+  Department / Institution \\
+  \texttt{author2@institution.edu} \\
+}
+
+\renewcommand{\headeright}{}
+\renewcommand{\undertitle}{}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Feed-forward pointmap regression has become the dominant route to dense
+multi-view reconstruction: a network maps each image pair to per-pixel
+3D coordinates in a shared frame, so that depth, relative pose, and dense
+correspondence emerge together. Turning many such pairwise predictions
+into a single scene still requires a \emph{fusion} step, handled today
+either by a per-scene global-alignment optimization or by a learned
+recurrent state. Neither makes explicit \emph{where}, and to \emph{what
+degree}, the pairwise predictions fail to admit a globally consistent
+reconstruction---a question that is a nuisance for rigid scenes but
+central for dynamic ones, where object motion makes a single consistent
+rigid geometry genuinely obstructed rather than merely hard to find.
+We recast multi-view pointmap fusion as the search for a \emph{global
+section} of a cellular sheaf on the view graph, whose stalks carry
+per-view geometry and whose restriction maps carry the network's
+predicted relative transforms. In this language a globally consistent
+reconstruction is the kernel of the sheaf Laplacian, recoverable by a
+sparse, graph-native diffusion with a spectrally controlled rate, while
+the obstruction to consistency is measured by the first cohomology,
+whose mass localizes on exactly the moving and occluded regions. The
+formulation subsumes the correspondence graph as a strictly less
+expressive special case, yields a principled alternative to the
+opaque global-alignment optimizer, and produces an unsupervised
+dynamic-region detector as a by-product. This document develops the
+formulation and the preliminaries it rests on.
+\end{abstract}
+
+% ====================================================================
+\section{Introduction}
+% ====================================================================
+
+Pointmap regression has reshaped multi-view 3D reconstruction. In place
+of the classical pipeline---detect correspondences, estimate poses,
+triangulate, fuse---models in the DUSt3R family~\citep{wang2024dust3r,
+leroy2024grounding} learn a single feed-forward map from an image pair
+$(I^1,I^2)$ to two dense \emph{pointmaps}, per-pixel 3D coordinates
+expressed in a common camera frame, so that depth, relative pose, and
+dense correspondence are read off a single prediction. For dynamic
+scenes, where object motion breaks the rigid-alignment assumption,
+MonST3R~\citep{zhang2025monst3r} retrains on moving content and
+$\mathrm{D}^2$USt3R~\citep{han2026enhancing} introduces static--dynamic
+aligned pointmaps that warp static pixels by camera pose and dynamic
+pixels by optical flow, sharpening correspondence on moving objects.
+
+These models are inherently \emph{pairwise}. Recovering a scene from
+$N>2$ views requires a separate \emph{fusion} stage that reconciles the
+overlapping pairwise predictions into one globally consistent geometry.
+Two families address it. The first keeps a per-scene
+\emph{global-alignment} optimization: the original DUSt3R formulation
+minimizes pairwise pointmap disagreement over per-view depths, poses,
+and intrinsics by gradient descent for a few hundred
+iterations~\citep{wang2024dust3r}, an objective inherited with minor
+variation by its dynamic successors. The second replaces optimization
+with a learned state: Spann3R carries an external spatial
+memory~\citep{wang20253d}, CUT3R maintains a persistent recurrent
+state that emits each new pointmap directly in a shared
+frame~\citep{wang2025continuous}, and SLAM-oriented systems fuse submaps with
+loop closures~\citep{murai2025mast3r}.
+
+Across both families, global consistency is enforced \emph{implicitly}.
+The optimizer drives pairwise residuals toward zero; the learned state
+absorbs multi-view agreement into its weights. Neither exposes the
+object that actually controls whether fusion can succeed: a
+\emph{principled, computable account of the obstruction} to gluing the
+local predictions into one scene. For rigid scenes this absence is
+tolerable, because a consistent global geometry exists and the only
+question is how fast one finds it. For dynamic scenes it is the crux. A
+moving object photographed at two times has \emph{no} single rigid
+placement consistent with both views; the pairwise predictions are
+locally correct yet globally incompatible, and the incompatibility is
+not noise to be averaged away but structure to be measured. Current
+fusion either fights this obstruction (rigid alignment, which smears the
+error into neighboring static geometry) or hides it (a learned state,
+which offers no handle on where consistency genuinely failed).
+
+\paragraph{Our viewpoint.}
+The pairwise predictions carry exact algebraic structure that names this
+obstruction. Index the views by the vertices of a \emph{view graph}
+$G=(V,E)$, with an edge for each pair the network has related. Each view
+supplies a local description of the scene's geometry; each edge supplies
+a predicted transform relating the two descriptions on their overlap. A
+globally consistent reconstruction is precisely an assignment of a
+geometry to every view that agrees, edge by edge, under these
+transforms---in the language of applied topology, a \emph{global
+section} of a cellular sheaf~\citep{curry2014sheaves,ghrist2014elementary}
+whose stalks are the per-view geometries and whose restriction maps are
+the predicted transforms. We make this identification precise and build
+the fusion problem on it. The sheaf is the canonical structure for
+integrating local observations into a global state~\citep{robinson2017sheaves};
+our contribution is to recognize that multi-view pointmap fusion is an
+instance, and that its dynamic-scene difficulties are exactly the
+sheaf's cohomology.
+
+\paragraph{What the viewpoint buys.}
+Three consequences follow, and they organize the paper.
+\emph{(i) Consistency is a kernel.} A reconstruction is globally
+consistent if and only if it lies in the kernel of the \emph{sheaf
+Laplacian} $\Lap_{\sheaf}$, a sparse positive-semidefinite operator
+built from the restriction maps~\citep{hansen2019toward}. Fusion
+becomes a graph-native diffusion---heat flow under $\Lap_{\sheaf}$, a
+sequence of sparse linear solves---whose convergence rate is governed by
+the spectral gap of $\Lap_{\sheaf}$, replacing the opaque gradient
+descent of global alignment with an operator one can analyze and
+precondition. \emph{(ii) Inconsistency is cohomology, and it localizes.}
+When no global section exists, the failure is measured by the first
+cohomology $\Hcoh^1(G;\sheaf)$, equivalently by the harmonic
+$1$-cochains in the cokernel of the coboundary. In a dynamic scene this
+obstruction mass concentrates on the edges and regions where motion and
+occlusion make local predictions globally irreconcilable, yielding an
+\emph{unsupervised} dynamic-region detector---reaching
+$\mathrm{D}^2$USt3R's static/dynamic split from topology rather than from
+an optical-flow threshold. \emph{(iii) The sheaf strictly refines the
+graph.} A bare correspondence graph records \emph{that} two views are
+related; the sheaf records \emph{how}, by carrying the transition maps as
+data, and its cohomology expresses global obstructions---scale drift,
+loop inconsistency, motion---that a flat union of pointmaps cannot
+represent. This answers, in the affirmative and precisely, whether a
+graph-structured world model is more expressive than a pointmap pile:
+not the graph, but the sheaf on it, is.
+
+\paragraph{Relation to prior structure.}
+The closest existing machinery is group synchronization: estimating
+absolute poses on graph vertices from relative measurements on
+edges~\citep{singer2011angular}, with certifiable solvers over
+$\SE(3)$~\citep{rosen2019se} and, paired with a learned depth prior,
+over the similarity group~\citep{yu2024sim}. Synchronization is the
+\emph{linear, single-stalk} shadow of our formulation---the special case
+in which every stalk is one copy of the pose group and the only data are
+relative transforms---and it targets the same fusion stage. The sheaf
+view generalizes it in two ways that matter for dynamic scenes: stalks
+may carry dense per-view geometry rather than a single pose, and the
+cohomological obstruction is retained and localized rather than
+relaxed away. On the topology side, spectral sheaf
+theory~\citep{hansen2019toward,hansen2021opinion} and sheaf-based
+sensor fusion~\citep{robinson2017sheaves} supply the operators we use;
+our contribution is their first instantiation, to our knowledge, on
+dense multi-view pointmap reconstruction, together with the
+dynamic-scene reading of $\Hcoh^1$.
+
+\paragraph{Contributions.}
+\begin{enumerate}[leftmargin=1.4em,itemsep=0.15em,topsep=0.2em]
+  \item We recast multi-view pointmap fusion as recovering a global
+        section of a cellular sheaf on the view graph, with per-view
+        geometry as stalks and the network's predicted transforms as
+        restriction maps (Section~\ref{sec:recon-sheaf}). The
+        construction subsumes both DUSt3R-style global alignment and
+        $\SE(3)$/$\Sim(3)$ synchronization as special cases.
+  \item We characterize globally consistent reconstructions as the
+        kernel of the sheaf Laplacian and give a sparse diffusion solver
+        with a convergence rate controlled by its spectral gap,
+        providing a principled, analyzable replacement for the
+        global-alignment optimizer.
+  \item We show that the first cohomology localizes the obstruction to
+        consistency, and that in dynamic scenes its mass concentrates on
+        moving and occluded regions, yielding an unsupervised
+        dynamic-region detector that requires no flow estimator.
+  \item We analyze the formulation's two honest failure modes---the
+        non-abelian curvature of pose-valued stalks, handled by a
+        connection (tangent-space) linearization, and the coupling
+        between the evolving reconstruction and the sheaf it induces---and
+        validate the resulting method empirically.
+\end{enumerate}
+
+% ====================================================================
+\section{Preliminaries}
+\label{sec:prelim}
+% ====================================================================
+
+We fix notation for pointmaps and the fusion problem
+(Section~\ref{sec:prelim-pointmaps}), recall cellular sheaves and their
+spectral theory (Section~\ref{sec:prelim-sheaves}), and assemble the two
+into the reconstruction sheaf that the method operates on
+(Section~\ref{sec:recon-sheaf}).
+
+% --------------------------------------------------------------------
+\subsection{Pointmaps and the fusion problem}
+\label{sec:prelim-pointmaps}
+% --------------------------------------------------------------------
+
+Let $I^1,\dots,I^N$ be images of resolution $W\times H$. A
+\emph{pointmap} $X^{n,m}\in\R^{W\times H\times 3}$ assigns to each pixel
+of image $n$ its 3D location expressed in the camera frame of image $m$.
+For a pair $(n,m)$ the network of the DUSt3R
+family~\citep{wang2024dust3r,zhang2025monst3r,han2026enhancing} regresses
+$X^{n,m}$ and $X^{m,m}$ together with per-pixel confidences $C^{n,m}$,
+from which depth, the relative camera transform, and dense
+correspondence follow. Writing $\pi_K^{-1}(p,d)=d\,K^{-1}\tilde p$ for
+the back-projection of pixel $p$ at depth $d$ through intrinsics $K$
+($\tilde p$ homogeneous), each view $n$ carries a depth map $D_n$, a
+pose $g_n\in\SE(3)$, and intrinsics $K_n$, and contributes the
+world-frame points
+\begin{equation}
+  \chi_n(p) \;=\; g_n \cdot \pi_{K_n}^{-1}\!\big(p,\,D_n(p)\big).
+  \label{eq:chi}
+\end{equation}
+
+\paragraph{The view graph.}
+Collect the views as the vertices of a \emph{view graph} $G=(V,E)$,
+placing an edge $e=(i,j)\in E$ whenever the network has produced a
+pairwise prediction relating views $i$ and $j$ (in practice, pairs
+selected by a confidence- or overlap-based scene graph). Each edge
+carries the predicted relative geometry on the overlap of the two views:
+a relative transform $g_e$, a relative scale $\sigma_e$, and the
+correspondence field that identifies which pixels of $i$ and $j$ view the
+same scene point.
+
+\paragraph{Global alignment.}
+The standard fusion objective reconciles the pairwise predictions by
+minimizing a confidence-weighted pairwise disagreement,
+\begin{equation}
+  \mathcal{L}_{\mathrm{align}}
+  \;=\;
+  \sum_{e=(i,j)\in E}\;\sum_{n\in\{i,j\}}\;\sum_{p}
+  \nu_n(p)\,
+  \big\lVert
+     \chi_n(p) \;-\; g_e\!\left(\sigma_e\, X^{(e)}_n(p)\right)
+  \big\rVert ,
+  \label{eq:align}
+\end{equation}
+over the per-view variables $\{D_n,g_n,K_n\}$ and per-edge variables
+$\{g_e,\sigma_e\}$, solved by gradient descent~\citep{wang2024dust3r}.
+Two features of \eqref{eq:align} motivate what follows. First, it
+couples the variables \emph{only} through the shared correspondence
+encoded on edges---it is a sum of edge-local agreement terms---so its
+structure is that of a function on a graph, not on an unstructured point
+cloud. Second, it presumes a consistent rigid global geometry exists and
+seeks it by descent; it has no notion of, and returns no certificate
+for, the case where consistency is genuinely obstructed, which is the
+generic situation under object motion. The reformulation below keeps the
+edge-local structure of \eqref{eq:align} but replaces ``descend on the
+residual'' with ``identify the residual's consistent part and measure its
+obstruction.''
+
+% --------------------------------------------------------------------
+\subsection{Cellular sheaves and their Laplacian}
+\label{sec:prelim-sheaves}
+% --------------------------------------------------------------------
+
+We recall the minimal sheaf-theoretic vocabulary; see
+\citet{curry2014sheaves} and \citet{hansen2019toward} for full
+treatments.
+
+\begin{definition}[Cellular sheaf]
+A \emph{cellular sheaf} $\sheaf$ of finite-dimensional real vector spaces
+on a graph $G=(V,E)$ assigns
+\begin{itemize}[leftmargin=1.4em,itemsep=0.1em,topsep=0.1em]
+  \item to each vertex $v\in V$ a \emph{stalk} $\sheaf(v)$, a vector
+        space of data local to $v$;
+  \item to each edge $e\in E$ a stalk $\sheaf(e)$, the data shared on $e$;
+  \item to each incident pair $v\trianglelefteq e$ a linear
+        \emph{restriction map} $\restr{v}{e}:\sheaf(v)\to\sheaf(e)$.
+\end{itemize}
+\end{definition}
+
+The \emph{$0$-cochains} $\Cochain^0(G;\sheaf)=\bigoplus_{v\in V}\sheaf(v)$
+collect a choice of local data at every vertex; the \emph{$1$-cochains}
+$\Cochain^1(G;\sheaf)=\bigoplus_{e\in E}\sheaf(e)$ collect data on every
+edge. Fixing an orientation on each edge $e=(i,j)$, the
+\emph{coboundary} $\coboundary:\Cochain^0\to\Cochain^1$ compares the two
+endpoints through their restriction maps,
+\begin{equation}
+  (\coboundary x)_e \;=\; \restr{j}{e}\,x_j \;-\; \restr{i}{e}\,x_i,
+  \qquad e=(i,j).
+  \label{eq:coboundary}
+\end{equation}
+
+\begin{definition}[Global sections]
+A $0$-cochain $x\in\Cochain^0(G;\sheaf)$ is a \emph{global section} if
+$\coboundary x=0$, i.e.\ if the local data agree on every edge after
+restriction. The space of global sections is
+$\Sections(G;\sheaf)=\ker\coboundary=\Hcoh^0(G;\sheaf)$.
+\end{definition}
+
+Equipping every stalk with an inner product makes $\coboundary$ a map of
+inner-product spaces with adjoint $\coboundary^{\!\top}$. The
+\emph{(degree-$0$) sheaf Laplacian} is
+\begin{equation}
+  \Lap_{\sheaf} \;=\; \coboundary^{\!\top}\coboundary
+  \;:\;\Cochain^0(G;\sheaf)\to\Cochain^0(G;\sheaf),
+  \label{eq:sheaf-laplacian}
+\end{equation}
+a sparse, symmetric, positive-semidefinite operator whose
+$(i,j)$ block is supported exactly on the edges of $G$, so that
+$\Lap_{\sheaf}$ inherits the sparsity of the view graph. When every
+stalk is $\R$ and every restriction map is the identity,
+$\Lap_{\sheaf}$ is the ordinary graph Laplacian; the sheaf Laplacian is
+its data-carrying refinement. We use two standard facts.
+
+\begin{lemma}[Sections are the kernel; obstruction is cohomology
+{\citep{hansen2019toward}}]
+\label{lem:kernel}
+For a cellular sheaf $\sheaf$ on a graph,
+\[
+  \ker\Lap_{\sheaf} \;=\; \ker\coboundary \;=\; \Sections(G;\sheaf)
+  \;=\; \Hcoh^0(G;\sheaf),
+\]
+and the first cohomology
+$\Hcoh^1(G;\sheaf)=\Cochain^1/\img\coboundary\cong\ker\coboundary^{\!\top}$
+is isomorphic to the space of \emph{harmonic $1$-cochains}. In
+particular $\Hcoh^1=0$ if and only if every edge residual can be
+explained by a global section.
+\end{lemma}
+
+Lemma~\ref{lem:kernel} is the structural backbone of the method:
+recovering a consistent reconstruction means projecting onto
+$\ker\Lap_{\sheaf}$, which the heat flow
+$\dot x=-\Lap_{\sheaf}\,x$ achieves with a rate set by the smallest
+nonzero eigenvalue of $\Lap_{\sheaf}$; and the residual that no global
+section can absorb is the harmonic representative of
+$\Hcoh^1(G;\sheaf)$, a quantity supported on edges and therefore
+\emph{localizable}.
+
+% --------------------------------------------------------------------
+\subsection{The reconstruction sheaf}
+\label{sec:recon-sheaf}
+% --------------------------------------------------------------------
+
+We now place the fusion problem of \eqref{eq:align} on the sheaf of
+Section~\ref{sec:prelim-sheaves}. Fix the view graph $G=(V,E)$ of
+Section~\ref{sec:prelim-pointmaps}.
+
+\paragraph{Stalks.}
+The stalk $\sheaf(v)$ over a view holds that view's contribution to the
+world geometry. In the simplest \emph{coordinate} model, $\sheaf(v)$ is
+the space of world-frame point assignments $\chi_v$ of
+\eqref{eq:chi} for the pixels of view $v$; in the \emph{pose} model used
+for analysis, $\sheaf(v)$ is the tangent space at the current estimate of
+view $v$'s frame and scale, i.e.\ a copy of the Lie algebra
+$\mathfrak{se}(3)\oplus\R$ (the generator of $\Sim(3)$). The edge stalk
+$\sheaf(e)$ over $e=(i,j)$ is the space of geometry on the shared overlap
+of views $i$ and $j$, into which both endpoints restrict.
+
+\paragraph{Restriction maps.}
+The restriction map $\restr{i}{e}$ takes view $i$'s local geometry to its
+prediction on the overlap of $e$; concretely it applies the
+back-projection \eqref{eq:chi} and selects the pixels of $i$ that the
+edge's correspondence field matches to $j$. The two restriction maps of
+an edge are built so that $(\coboundary x)_e=0$ encodes \emph{exactly}
+the per-edge agreement term inside \eqref{eq:align}: a global section is a
+set of per-view geometries whose overlaps coincide after the predicted
+transforms, which is the definition of a globally consistent
+reconstruction. Thus $\mathcal{L}_{\mathrm{align}}$ in \eqref{eq:align}
+is, up to the confidence weights $\nu_n(p)$ folded into the stalk inner
+products, the Dirichlet energy
+$\tfrac12\,\inner{x}{\Lap_{\sheaf}x}=\tfrac12\norm{\coboundary x}^2$ of
+the reconstruction sheaf.
+
+\begin{proposition}[Fusion as a kernel problem; informal]
+\label{prop:fusion}
+With the reconstruction sheaf above, the minimizers of the global
+alignment energy \eqref{eq:align} are the $0$-cochains nearest to
+$\ker\Lap_{\sheaf}=\Sections(G;\sheaf)$ in the stalk inner product. When
+a consistent rigid reconstruction exists it is a global section and the
+energy attains zero; when object motion or loop inconsistency obstructs
+consistency, the irreducible residual is the harmonic representative of
+$\Hcoh^1(G;\sheaf)$.
+\end{proposition}
+
+Proposition~\ref{prop:fusion} reframes fusion from descent on a residual
+to projection onto a kernel, and it identifies the leftover---the part of
+the data that \emph{cannot} be made consistent---with a cohomology class
+rather than with optimizer noise. The dynamic-scene method developed in
+the sequel reads this class off the harmonic $1$-cochains and attributes
+its support to moving and occluded regions.
+
+\begin{remark}[Two honest subtleties]
+\label{rem:subtleties}
+First, poses live in $\Sim(3)$, which is non-abelian, so the linear
+coboundary \eqref{eq:coboundary} is exact only on the tangent stalks of
+the pose model; on the group itself the correct object is a sheaf with a
+\emph{connection}, whose curvature around a cycle is the synchronization
+obstruction~\citep{singer2011angular,rosen2019se}. We work in the
+tangent linearization and re-linearize as the estimate updates, a
+sheaf-valued Gauss--Newton iteration. Second, the restriction maps depend
+on the correspondence field, which depends on the very geometry we solve
+for, so the sheaf co-evolves with its section; we treat the network's
+pairwise predictions as fixed during each solve and refresh them between
+outer iterations. Both subtleties are analyzed in Section~\todo{method}.
+\end{remark}
+
+% ====================================================================
+\section{A Proof-of-Concept Experiment}
+\label{sec:experiments}
+% ====================================================================
+
+The viewpoint of Section~\ref{sec:recon-sheaf} rests on one empirical claim
+that no prior theory supplies: that the harmonic representative of
+$\Hcoh^1(G;\sheaf)$ concentrates on moving regions rather than smearing into the
+static surround or being swamped by loop-closure and drift modes
+(Contribution~3). Before committing to the non-abelian machinery of
+Remark~\ref{rem:subtleties}, we test this claim in the cleanest setting that can
+falsify it: a controlled synthetic scene with a single known rigid moving
+object, on which we build the linearized reconstruction sheaf and compute the
+harmonic $1$-cochain numerically. The experiment uses no learned network and no
+training; it isolates \emph{the sheaf machinery} from the quality of any
+particular pairwise predictor, and runs in seconds on CPU.
+
+% --------------------------------------------------------------------
+\subsection{Setup}
+\label{sec:exp-setup}
+% --------------------------------------------------------------------
+
+We place $N=14$ cameras on a partial orbit viewing a scene of $90$ static
+background points and one rigid object of $24$ points that translates and
+rotates between frames. The view graph $G$ is the temporal chain augmented with
+a few long-range loop-closure edges, so that cycles---and hence a place for
+loop-inconsistency modes to live---are present. We instantiate the
+reconstruction sheaf in the pose model: each vertex stalk is the $\Sim(3)$
+tangent $\mathfrak{se}(3)\oplus\R$, and the edge stalk over $e=(i,j)$ is
+decomposed \emph{per co-visible point}, one copy of $\R^3$ per point, so that a
+$1$-cochain carries a residual for each scene point on each edge and $\Hcoh^1$
+can localize spatially rather than merely per view. For point $k$ on edge
+$(i,j)$, each endpoint pushes its observation through the current pose estimate
+to a world point $w^i_k$, giving the base residual
+$r^0_{ij,k}=w^i_k-w^j_k\in\R^3$; the coboundary acts by the left-perturbation
+Jacobian $B_{i,k}=[\,I\;\,{-}[w^i_k]_\times\;\,w^i_k\,]$, and the sheaf Laplacian
+is $\Lap_{\sheaf}=\coboundary^{\!\top}\coboundary$, which is precisely the
+bundle-adjustment information matrix. The harmonic representative is the part of
+the residual that no pose correction can remove,
+$h=r^0+\coboundary\xi^\star$ with
+$\xi^\star=\arg\min_\xi\norm{r^0+\coboundary\xi}^2$, obtained by a sparse
+least-squares solve (projection onto $\ker\coboundary^{\!\top}$, cf.\
+Lemma~\ref{lem:kernel}). We compare the per-point harmonic energy
+$E_k=\sum_{e\ni k}\norm{h_{e,k}}^2$ against the per-point raw residual energy
+$R_k=\sum_{e\ni k}\norm{r^0_{e,k}}^2$---the quantity bundle adjustment drives to
+zero---and score how well each separates the (known) moving points from the
+static ones by AUROC.
+
+% --------------------------------------------------------------------
+\subsection{The obstruction localizes, and survives drift}
+\label{sec:exp-results}
+% --------------------------------------------------------------------
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\linewidth]{figs/story_localization.png}
+  \caption{\textbf{The harmonic $\Hcoh^1$ representative localizes on the moving
+  object where the raw residual cannot.} Per-point energy on a scene with
+  accumulating camera drift ($0.30$ rad/step), one projection; cyan rings mark
+  the ground-truth moving object. \emph{Left:} ground truth. \emph{Middle:} the
+  raw residual energy $R_k$ that bundle adjustment minimizes---drift inflates
+  static points too, so its brightest points are static and the object is not
+  separable (AUROC $0.71$). \emph{Right:} the harmonic energy $E_k$, which
+  removes everything a pose correction can explain and lights up exactly the
+  moving object (AUROC $1.00$). Energies are min--max normalized per panel.}
+  \label{fig:localization}
+\end{figure}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.62\linewidth]{figs/story_drift.png}
+  \caption{\textbf{The cohomological signal is invariant to camera drift; the
+  raw residual is not.} Localization AUROC (moving vs.\ static) versus
+  accumulating per-step camera drift, mean $\pm$ s.d.\ over $6$ seeds. The
+  harmonic energy stays at $1.00$ because drift is, by construction, in the
+  image of the coboundary and is projected away; the raw residual decays from
+  $1.00$ toward chance as drift grows. The two coincide only at zero
+  drift---the regime the dynamic-scene problem is not about.}
+  \label{fig:drift}
+\end{figure}
+
+Figure~\ref{fig:localization} shows the central result. With ground-truth
+poses both $E_k$ and $R_k$ trivially isolate the object; the interesting case is
+\emph{accumulating odometry drift}, under which the static background also
+disagrees across views. The raw residual then conflates that disagreement with
+object motion and fails to localize (AUROC $0.71$, and its brightest points are
+static), whereas the harmonic projection first subtracts off every
+pose-explainable disagreement and retains only the irreducible part, which sits
+squarely on the moving object (AUROC $1.00$). This is exactly the distinction
+Proposition~\ref{prop:fusion} draws: bundle adjustment treats the residual as
+noise to be minimized and discards the leftover, while the cohomological reading
+keeps it as a class and reads it as scene dynamics. Figure~\ref{fig:drift}
+quantifies the robustness across a sweep of drift magnitudes: the harmonic AUROC
+is pinned at $1.00$ with zero variance while the raw AUROC decays from $1.00$
+toward chance, with a variance band that crosses below $0.5$. The harmonic
+signal is, empirically, invariant to the camera drift that defeats the raw
+residual.
+
+% --------------------------------------------------------------------
+\subsection{Honest boundaries}
+\label{sec:exp-boundaries}
+% --------------------------------------------------------------------
+
+The experiment also makes three limitations concrete, each of which sharpens the
+theory to be built.
+
+\paragraph{The global scale gauge must be anchored.}
+The coordinate residual $w^i_k-w^j_k$ is not invariant under a global rescaling
+of the reconstruction, so the uniform log-scale direction of the $\Sim(3)$
+stalks is a coboundary that shrinks the world toward a point and annihilates
+\emph{every} residual, the obstruction included; left free, it drives the
+harmonic energy and the localization AUROC to zero. Anchoring the global scale
+(one linear constraint pinning $\sum_v$ of the per-view log-scales) removes this
+mode and restores the result. This is the metric-scale gauge of $\Sim(3)$
+reconstruction surfacing in the spectral picture, and it should be stated
+alongside the non-abelian subtlety of Remark~\ref{rem:subtleties}.
+
+\paragraph{Localization presumes a static-dominant scene.}
+The static background is what pins the remaining gauge: it is the data that fixes
+the per-view frames, leaving the moving object as the unexplained residual. As
+the static fraction falls, this anchoring weakens, and localization degrades
+sharply once moving points cease to be a minority---past the point where static
+and dynamic points are equinumerous, the projection can no longer tell which is
+the scene and which is the object, and the AUROC collapses. This is precisely
+the generative assumption---static scene, rigid camera, moving objects as a
+minority---that a localization theorem for $\Hcoh^1$ would need to state, now
+made empirically concrete, with the static fraction as the natural control
+parameter for a separation bound.
+
+\paragraph{The linearization is valid in pose error, not object motion.}
+Because object motion enters only through the (exactly computed) residual
+$r^0$, while the linearization is in the \emph{pose corrections} $\xi$, the
+familiar ``large motion breaks the tangent approximation'' concern attaches to
+the magnitude of pose error, not to how fast the object moves. Empirically the
+harmonic localization is invariant to camera drift up to large per-step
+magnitudes and degrades only at extreme drift, far outside any realistic regime;
+the valid operating window is wide. Conversely, the projection removes only
+pose-explainable disagreement, so it offers no protection against per-pixel
+measurement noise---both readings fail once noise rivals the object's motion.
+
+% --------------------------------------------------------------------
+\subsection{Scope}
+\label{sec:exp-scope}
+% --------------------------------------------------------------------
+
+This is a synthetic, in-the-clean test: the residuals are computed from
+ground-truth geometry rather than from a learned predictor, which is what lets
+it isolate the sheaf machinery from prediction quality. It establishes that
+\emph{if} the pairwise predictions are clean enough, the harmonic
+$\Hcoh^1$ provably localizes scene dynamics and does so with an invariance to
+pose drift that the raw residual lacks. It does not yet establish that a real
+pointmap network's residuals meet that bar, nor does it treat occlusion---which
+is missing data rather than inconsistency and warrants its own
+test---and the static-dominance precondition remains a conjecture awaiting the
+separation bound. Validating the construction on $\mathrm{D}^2$USt3R predictions
+for a real dynamic clip is the immediate next step.
+
+% ====================================================================
+\bibliographystyle{abbrvnat}
+\bibliography{references}
+% ====================================================================
+
+\end{document}
