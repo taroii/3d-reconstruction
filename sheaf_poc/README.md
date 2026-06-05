@@ -49,6 +49,23 @@ invariance), the linearization concern is closed (iterated GN), and the
 static-dominance precondition is both sharpened (it's about the largest coherent
 group) and pushed to its symmetry limit (robust anchoring).
 
+## Realism stress-tests — pre-real-data (`experiments_realism.py`)
+
+Gaps between the clean synthetic PoC and real D²USt3R data, probed while we still
+have ground truth (the "A block").
+
+| # | Test | Finding | Figure |
+|---|---|---|---|
+| A1 | **Correspondence outliers** | a summed energy readout collapses at 5% mismatches (AUROC 0.57), because sporadic mismatches accumulate. Fix: motion is consistent across edges while a mismatch is sporadic, so a **robust solve + median-over-edges readout** holds AUROC ≈ 1.0 to ~15% outliers and 0.98 at 20%. Residual false positives are scattered (not coherent) → motivates a spatial-coherence prior on dense data. | `realism_corr.png` |
+| A2 | **Structured prediction error** | a spatially-coherent, view-dependent mispredicted *static* patch is cohomologically **indistinguishable from motion** — neither the standard nor the robust solve can reject it. **Only confidence weighting** (discounting incidences the network flags unreliable) makes it invisible. ⇒ the real pipeline *must* use D²USt3R's confidence maps (the `ν` weights are not optional). | `realism_structured.png` |
+| A3 | **Hyperparameter sensitivity** | localization AUROC is **flat at 1.000** across `huber_k` (1–5), `n_irls` (2–15), `n_iters` (2–20), and `gauge_weight` (10–10⁵). Nothing is finely tuned. | `realism_hparams.png` |
+
+New method ingredient from A1: `per_point_energy_robust(..., reduce="median")` —
+a robust readout that exploits motion's cross-edge consistency. Two takeaways
+feed the real-data design: **(i)** use robust solve + median readout (+ a spatial
+prior) for correspondence noise; **(ii)** confidence maps are required, not
+optional, because coherent prediction error mimics a true obstruction.
+
 **Headline figures** (`python make_figures.py`), the two beats of the story:
 
 - `figures/story_localization.png` — *truth → raw residual (BA) → harmonic H¹
@@ -115,6 +132,12 @@ python diagnostics.py
 
 # robustness sub-experiments addressing the three caveats (writes robust_*.png)
 python experiments_robustness.py
+
+# the combined capstone (all caveats stacked, full solver) -> combined.png
+python combined_experiment.py
+
+# realism stress-tests before real data: A1/A2/A3 -> realism_*.png
+python experiments_realism.py
 ```
 
 Everything is seeded (`numpy.random.default_rng`) and deterministic. Total
@@ -128,6 +151,8 @@ runtime is a few seconds.
 | `run_experiment.py` | the experiment: cases A (clean) / B (drift) / C (drift sweep) / D (static-fraction sweep), figures, verdict |
 | `make_figures.py` | the two headline story figures (localization triptych, drift-invariance curve) |
 | `experiments_robustness.py` | the four robustness sub-experiments (multi-object, robust anchoring, iterated GN, scale-gauge) |
+| `combined_experiment.py` | capstone: all caveats stacked, solved with the full robust+iterated method |
+| `experiments_realism.py` | realism stress-tests (A1 correspondence outliers, A2 structured error, A3 hyperparameters) |
 | `diagnostics.py` | supplementary: Sim(3) scale-collapse demo and the three failure boundaries |
 | `environment.yml` | conda spec for the `sheaf-poc` env |
 | `figures/` | generated PNGs (regenerated on every run) |

@@ -205,6 +205,30 @@ def make_view_graph(n_views, loop_closures=True):
     return edges
 
 
+def make_correspondences(scene, edges, outlier_frac, rng):
+    """Per-edge correspondence maps with a fraction of mismatches.
+
+    Returns a list (len edges) of arrays (len P): entry k is the point in view j
+    that query k in view i is matched to. A fraction `outlier_frac` of entries
+    are remapped to a random other point, modelling the imperfect matches a real
+    pointmap network produces (a mismatch at a static point looks like an
+    inconsistency that is not motion)."""
+    corr = []
+    P = scene.P
+    n_out = int(round(outlier_frac * P))
+    for _ in edges:
+        cmap = np.arange(P)
+        if n_out > 0:
+            queries = rng.choice(P, size=n_out, replace=False)
+            for k in queries:
+                kj = int(rng.integers(P))
+                while kj == k:
+                    kj = int(rng.integers(P))
+                cmap[k] = kj
+        corr.append(cmap)
+    return corr
+
+
 # --------------------------------------------------------------------------
 # Linearized reconstruction sheaf
 # --------------------------------------------------------------------------
@@ -225,12 +249,19 @@ def jacobian_block(w, use_scale):
 
 def build_sheaf(scene, edges, pose_R_est, pose_t_est, use_scale=False,
                 noise_std=0.0, rng=None, fix_scale_gauge=True,
-                gauge_weight=1e3, pose_s_est=None):
+                gauge_weight=1e3, pose_s_est=None, corr=None, obs_bias=None):
     """Assemble the coboundary delta (sparse) and base residual r0.
 
     pose_R_est, pose_t_est : the *estimated* world-from-camera poses used as the
         linearization base point. Pass the ground-truth poses for the clean
         case, or perturbed poses to simulate network pose error / drift.
+
+    corr : optional list (len edges) of arrays (len P) mapping each query point k
+        in view i to the point index it is matched to in view j. Identity by
+        default; non-identity entries model *correspondence outliers*. The
+        residual is always attributed to the query index k.
+    obs_bias : optional (N, P, 3) additive bias on each view's camera-frame
+        observation, for injecting structured (non-i.i.d.) prediction error.
 
     use_scale : include the Sim(3) log-scale generator per view. WARNING: the
         coordinate-model residual w_i - w_j is NOT scale-invariant, so the
@@ -260,10 +291,14 @@ def build_sheaf(scene, edges, pose_R_est, pose_t_est, use_scale=False,
 
     for e_idx, (i, j) in enumerate(edges):
         for k in range(scene.P):
-            # each endpoint's world estimate of point k, from its camera-frame
-            # observation pushed through the *estimated* pose (with scale).
+            # query point k in view i matched to point kj in view j (kj=k unless
+            # a correspondence outlier is injected via `corr`).
+            kj = k if corr is None else int(corr[e_idx][k])
             p_i = scene.point_in_camera(k, i)
-            p_j = scene.point_in_camera(k, j)
+            p_j = scene.point_in_camera(kj, j)
+            if obs_bias is not None:
+                p_i = p_i + obs_bias[i, k]
+                p_j = p_j + obs_bias[j, kj]
             if noise_std > 0 and rng is not None:
                 p_i = p_i + rng.normal(scale=noise_std, size=3)
                 p_j = p_j + rng.normal(scale=noise_std, size=3)
@@ -390,7 +425,8 @@ def iterated_gn(scene, edges, R0, t0, s0=None, n_iters=12, use_scale=True,
 
 
 def robust_iterated_gn(scene, edges, R0, t0, s0=None, n_iters=12, n_irls=6,
-                       use_scale=True, noise_std=0.0, damping=1.0):
+                       use_scale=True, noise_std=0.0, damping=1.0,
+                       huber_k=1.5, gauge_weight=1e3, corr=None, obs_bias=None):
     """Combined solver exercising every mitigation at once: a Gauss-Newton outer
     loop (handles large pose error), a robust IRLS inner solve (the static
     majority pins the gauge despite many moving points), per-view scale tracked
@@ -403,13 +439,16 @@ def robust_iterated_gn(scene, edges, R0, t0, s0=None, n_iters=12, n_irls=6,
     for _ in range(n_iters):
         delta, r0, incid, dim = build_sheaf(
             scene, edges, R, t, use_scale=use_scale, fix_scale_gauge=True,
-            noise_std=noise_std, pose_s_est=s)
-        xi, _, _ = _irls(delta, r0, incid, n_irls=n_irls)
+            gauge_weight=gauge_weight, noise_std=noise_std, pose_s_est=s,
+            corr=corr, obs_bias=obs_bias)
+        xi, _, _ = _irls(delta, r0, incid, n_irls=n_irls, huber_k=huber_k)
         R, t, s = apply_tangent_update(R, t, s, damping * xi, dim)
     delta, r0, incid, dim = build_sheaf(
         scene, edges, R, t, use_scale=use_scale, fix_scale_gauge=True,
-        noise_std=noise_std, pose_s_est=s)
-    h, _ = robust_harmonic_projection(delta, r0, incid, n_irls=n_irls)
+        gauge_weight=gauge_weight, noise_std=noise_std, pose_s_est=s,
+        corr=corr, obs_bias=obs_bias)
+    h, _ = robust_harmonic_projection(delta, r0, incid, n_irls=n_irls,
+                                      huber_k=huber_k)
     return h, incid, (R, t, s)
 
 
@@ -444,6 +483,25 @@ def per_point_energy(values, incid, n_points):
         energy[k] += float(block @ block)
         count[k] += 1
     return energy, count
+
+
+def per_point_energy_robust(values, incid, n_points, reduce="median"):
+    """Aggregate a 1-cochain into per-point energy with a chosen reducer over
+    each point's incidences. 'median' rejects *sporadic* per-edge corruption
+    (e.g. correspondence outliers): genuine motion makes a point inconsistent on
+    almost every incident edge, whereas a mismatch corrupts only a few, so the
+    median stays low. 'mean' reproduces the (non-robust) average readout."""
+    buckets = [[] for _ in range(n_points)]
+    for (_, k, row) in incid:
+        b = values[row:row + 3]
+        buckets[k].append(float(b @ b))
+    E = np.zeros(n_points)
+    for k, vals in enumerate(buckets):
+        if not vals:
+            continue
+        E[k] = np.median(vals) if reduce == "median" else (
+            np.mean(vals) if reduce == "mean" else np.sum(vals))
+    return E
 
 
 # --------------------------------------------------------------------------

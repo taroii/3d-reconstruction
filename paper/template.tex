@@ -611,6 +611,55 @@ thus governed by the dominance of the static group, not by the raw moving
 fraction.
 
 % --------------------------------------------------------------------
+\subsection{Toward real data: realism stress-tests}
+\label{sec:exp-realism}
+% --------------------------------------------------------------------
+
+The tests above assume exact correspondences and i.i.d.\ noise; real pointmap
+predictions violate both. We probe the three resulting gaps while ground truth
+is still available, and report what the real pipeline must carry as a result.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\linewidth]{figs/realism_corr.png}
+  \caption{\textbf{Correspondence outliers.} Localization AUROC (left) and
+  precision at the number of moving points (right) versus the per-edge mismatch
+  rate (mean over $5$ seeds). A summed energy readout collapses, because
+  sporadic mismatches accumulate; a \emph{median-over-edges} readout exploits
+  that genuine motion is inconsistent on \emph{every} edge while a mismatch is
+  not, and with the robust solve localization is preserved to a
+  $15$--$20\%$ mismatch rate.}
+  \label{fig:realism}
+\end{figure}
+
+\paragraph{Correspondence outliers.}
+A mismatch at a static point yields a large edge residual that is not motion.
+Such mismatches are \emph{sporadic}---a point is mis-matched on only a few
+edges---whereas genuine motion is \emph{consistent}, inconsistent on every edge
+a moving point touches. A per-point energy that \emph{sums} over edges therefore
+accumulates the sporadic hits and collapses (AUROC $0.57$ at a $5\%$ outlier
+rate), but reading the energy as a \emph{median} over a point's edges, together
+with the robust solve, rejects them: AUROC $\approx 1.0$ to a $15\%$ rate and
+$0.98$ at $20\%$ (Figure~\ref{fig:realism}). The residual false positives are
+spatially scattered rather than coherent, which a within-image smoothness prior
+would suppress.
+
+\paragraph{Structured prediction error.}
+Network error is spatially correlated and view-dependent, concentrating at depth
+and occlusion boundaries. A coherent, view-dependent error on a \emph{static}
+region is---unlike i.i.d.\ noise---cohomologically indistinguishable from
+motion: it is an irreducible obstruction that neither the harmonic projection
+nor the robust solve removes. Only downweighting by predicted
+\emph{confidence}---the per-pixel reliability the network already emits, i.e.\
+the weights $\nu_n(p)$ of \eqref{eq:align}---suppresses it. Confidence is thus a
+required input on real data, not an optional refinement.
+
+\paragraph{Hyperparameters.}
+Localization is insensitive to the solver's settings: AUROC stays at $1.00$ as
+the Huber constant, the IRLS and Gauss--Newton iteration counts, and the
+gauge-anchor weight are each varied over more than a decade.
+
+% --------------------------------------------------------------------
 \subsection{Scope}
 \label{sec:exp-scope}
 % --------------------------------------------------------------------
@@ -620,9 +669,13 @@ ground-truth geometry rather than from a learned predictor, which is what lets
 it isolate the sheaf machinery from prediction quality. It establishes that
 \emph{if} the pairwise predictions are clean enough, the harmonic
 $\Hcoh^1$ provably localizes scene dynamics and does so with an invariance to
-pose drift that the raw residual lacks. It does not yet establish that a real
-pointmap network's residuals meet that bar, nor does it treat occlusion---which
-is missing data rather than inconsistency and warrants its own test. A formal
+pose drift that the raw residual lacks; the realism stress-tests
+(Section~\ref{sec:exp-realism}) further identify what a real pipeline must
+carry---a robust median-over-edges readout for correspondence outliers and
+per-pixel confidence weighting for structured error. It does not yet establish
+that a real pointmap network's residuals meet that bar, nor does it treat
+occlusion---which is missing data rather than inconsistency and warrants its own
+test. A formal
 separation bound for the static-dominance precondition, now characterized and
 mitigated empirically (Section~\ref{sec:exp-boundaries}), likewise remains open.
 Validating the construction on $\mathrm{D}^2$USt3R predictions for a real
