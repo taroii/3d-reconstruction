@@ -25,6 +25,7 @@
 \DeclareMathOperator{\SE}{SE}
 \DeclareMathOperator{\Sim}{Sim}
 \DeclareMathOperator{\SO}{SO}
+\DeclareMathOperator{\Ad}{Ad}
 \DeclareMathOperator{\img}{im}
 \DeclareMathOperator{\rank}{rank}
 \DeclareMathOperator{\spann}{span}
@@ -880,6 +881,126 @@ unsupervised-detector claim of the introduction: on this evidence the
 contribution is the cohomological formulation of fusion and its synthetic
 characterization, rather than a real-data method that improves on flow-based
 segmentation or on global alignment.
+
+% ====================================================================
+\section{Loop-closure consistency on the pose sheaf}
+\label{sec:posesheaf}
+% ====================================================================
+The dense per-point model of Sections~\ref{sec:recon-sheaf}--\ref{sec:realdata}
+repeatedly meets the same obstacle: a structured, view-dependent prediction error
+on a static region is cohomologically indistinguishable from object motion
+(Section~\ref{sec:exp-realism}). We therefore ask whether the same construction is
+more useful on a coarser sheaf, where that confound is averaged away before it can
+become an obstruction.
+
+\subsection{The pose sheaf}
+Keep the view graph $G=(V,E)$, but place the sheaf on the \emph{pose} model. Per
+edge $e=(i,j)$ the backbone yields a measured relative transform
+$M_{ij}\in\SE(3)$ (recovered below from the pairwise pointmaps). Take stalks
+$\sheaf(v)=\sheaf(e)=\mathfrak{se}(3)$ and restriction maps given by the
+connection, $\restr{i}{e}=\Ad_{M_{ij}^{-1}}$ and $\restr{j}{e}=I$, so that with a
+right perturbation $g_k\!\leftarrow\!g_k\exp(x_k)$ the coboundary linearizes to
+\begin{equation}
+(\coboundary x)_e \;=\; x_j - \Ad_{M_{ij}^{-1}}\,x_i ,
+\qquad
+r^0_e \;=\; \log\!\big(M_{ij}^{-1} g_i^{-1} g_j\big).
+\end{equation}
+Then $\Lap_\sheaf=\coboundary^\top\coboundary$ is exactly the pose-graph
+information matrix, and the harmonic representative of $\Hcoh^1$ is the part of the
+edge residual that no choice of frames can remove: the irreducible loop-closure
+obstruction, whose projection onto a cycle is its linearized log-holonomy. The
+obstruction space has dimension $\dim\mathfrak g\cdot b_1(G)$ (tens of independent
+cycles), not the $\sim\!10^6$ of pixel space. For real data we use the rotation-only
+$\SO(3)$ sub-sheaf (restriction $R_{ij}^\top$), which is invariant to the per-pair
+scale ambiguity of pointmap-derived poses.
+
+\subsection{Synthetic validation}
+On a closed camera orbit ($10$ views, ring plus chords) with measurements
+$M_{ij}=g_i^{-1}g_j$ the operator behaves as predicted (Table~\ref{tab:posesynth}).
+Consistent measurements give zero harmonic energy to machine precision; a single
+edge corrupted by a rotation $\theta$ is localized by per-edge harmonic leverage
+$\norm{h_e}^2$ with AUROC $>0.95$ once $\theta$ exceeds the measurement noise; and
+the obstruction is invariant to camera-pose drift, provided the linearization is
+iterated to convergence (a single linearization is only first-order invariant, as
+$r^0$ is a logarithm of a product).
+
+\begin{table}[t]
+\centering
+\begin{tabular}{lll}
+\toprule
+check & quantity & result \\
+\midrule
+consistent measurements & $\max\norm{h_e}$ & $1.9\times10^{-16}$ \\
+planted bad edge ($\theta\!\ge\!0.05$) & bad-edge AUROC & $0.96$--$0.97$ \\
+drift invariance & harmonic energy ratio & median $1.000$ \\
+\bottomrule
+\end{tabular}
+\caption{Pose-sheaf operator on a synthetic closed orbit. The obstruction is
+zero when measurements are consistent, localizes a planted bad edge, and is
+invariant to the absolute-frame estimate (camera-pose drift).}
+\label{tab:posesynth}
+\end{table}
+
+\subsection{Real data: scene-graph pruning on TUM RGB-D}
+We test the practical use the operator suggests --- pruning the DUSt3R scene graph
+before global alignment --- on TUM RGB-D \texttt{fr1/room}~\citep{sturm2012benchmark},
+a handheld loop with motion-capture ground-truth poses; we use $30$ keyframes. Per
+pair we recover the relative pose by a confidence-weighted $\Sim(3)$ Procrustes fit
+between the two pixel-aligned pointmap predictions of the shared image. Against the
+mocap ground truth, high-overlap pairs have a median rotation error of
+$2^\circ$ and genuine revisit edges (temporally distant, spatially near) a median
+of $3^\circ$, confirming both the pose convention and that DUSt3R produces accurate
+loop closures. However, over the complete pairwise graph the relative-pose error is
+\emph{dense} rather than sparse-outlier (negative excess kurtosis), since most
+pairs barely overlap, and the error is largely predicted by signals already
+available: its correlation with the ground-truth viewpoint change is $0.81$ and
+with low pairwise confidence $0.49$.
+
+We keep the consecutive-frame backbone and add $K$ loop edges selected by DUSt3R
+confidence, by sheaf leverage (lowest harmonic mass), by an oracle (lowest
+ground-truth rotation error), or at random, then run the same global alignment and
+measure absolute trajectory error (ATE) against ground truth
+(Table~\ref{tab:prune}). Two effects appear. First, confidence already selects
+near-oracle loop edges --- the mean ground-truth rotation error of its top $20$
+picks is $1.4^\circ$, against the oracle's $0.8^\circ$ --- so there is little
+headroom for any consistency-based criterion to improve on it. Second, sheaf
+leverage performs poorly here (its top $20$ picks average $25.4^\circ$): the
+harmonic criterion presumes a predominantly consistent graph with sparse outliers,
+whereas the complete pairwise graph is predominantly low-overlap, so the
+rotation-synchronization consensus is itself unreliable and the few good edges,
+which disagree with it, are flagged as inconsistent.
+
+\begin{table}[t]
+\centering
+\begin{tabular}{lcccc}
+\toprule
+selection & $K{=}5$ & $K{=}10$ & $K{=}20$ & $K{=}40$ \\
+\midrule
+confidence        & 28.3 & 26.5 & 30.1 & 30.2 \\
+sheaf leverage    & 26.2 & 76.5 & 22.2 & 21.9 \\
+oracle (GT)       & 28.2 & 36.4 & 30.1 & 23.4 \\
+random            & 47.2 & 30.6 & 32.8 & 70.9 \\
+\bottomrule
+\end{tabular}
+\caption{Trajectory error (ATE, cm; lower is better) after global alignment on a
+graph of the consecutive-frame backbone plus $K$ loop edges, by selection
+criterion. Backbone alone gives $59.7$ cm. Confidence selection is already near the
+oracle; sheaf leverage does not improve on it and is unstable on this graph.}
+\label{tab:prune}
+\end{table}
+
+\subsection{Summary}
+\label{sec:ps-summary}
+The pose-sheaf construction is sound and validated in synthesis: $\Hcoh^1$ is the
+loop-closure obstruction, localizes a planted bad edge, and is drift-invariant.
+It does not, however, yield a real-data advantage for scene-graph pruning, for two
+data-dependent reasons that also explain the negative results of
+Section~\ref{sec:realdata}: the backbone's pairwise graph is dense-error rather
+than sparse-outlier, which is the regime the harmonic criterion requires, and the
+backbone's own confidence already selects loop edges near-optimally, leaving no
+headroom. The contribution that survives our study is therefore the cohomological
+formulation itself and its synthetic characterization, rather than a demonstrated
+improvement on a frozen-backbone reconstruction or SLAM pipeline.
 
 % ====================================================================
 \bibliographystyle{abbrvnat}
