@@ -9,3 +9,15 @@ cache/
 results/
 *.pth
 *.zip
+# cloned third-party repos (not part of this project's source)
+DDUSt3R/
+mast3r/
+# latex build artifacts
+*.aux
+*.bbl
+*.blg
+*.out
+*.log
+*.synctex.gz
+*.fls
+*.fdb_latexmk

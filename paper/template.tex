@@ -816,6 +816,55 @@ not insensitive to it; the alignment $\mathrm{D}^2$USt3R applies does not
 coincide with the world-frame cross-time consistency the operator measures.
 
 % --------------------------------------------------------------------
+\subsection{Robust fusion vs.\ global alignment}
+\label{sec:rd-fusion}
+% --------------------------------------------------------------------
+A second use of the construction is as a robust replacement for global alignment
+itself, rather than as a detector. The alignment objective is the sheaf
+Dirichlet energy, and the harmonic-projection / IRLS robustness downweights
+cross-frame-inconsistent pixels, which could in principle keep moving content
+from contaminating the static reconstruction. We compare standard DUSt3R global
+alignment~(a) against the same optimization with its per-pixel weights
+reweighted by a Huber factor on its own residual~(b), and measure depth error
+against ground truth, separated into static, dynamic, and all pixels. Depth is
+aligned to ground truth by an affine (scale and shift) fit before computing
+AbsRel. Table~\ref{tab:fusion} reports the mean over six static-dominant and
+three dynamic-heavy scenes.
+
+\begin{table}[t]
+\centering
+\begin{tabular}{llcc}
+\toprule
+scene group & region & standard GA & robust \\
+\midrule
+static-dominant (6) & static  & 0.547 & 0.549 \\
+                    & dynamic & 0.313 & 0.314 \\
+                    & all     & 0.739 & 0.738 \\
+\midrule
+dynamic-heavy (3)   & static  & 1.063 & 1.067 \\
+                    & dynamic & 0.276 & 0.276 \\
+                    & all     & 2.290 & 2.266 \\
+\bottomrule
+\end{tabular}
+\caption{Depth AbsRel vs.\ ground truth (lower is better), standard global
+alignment vs.\ robust reweighting. Robust reweighting changes the solution
+marginally and does not reduce static-region error; on static pixels it is
+slightly worse, and the effect does not grow on the dynamic-heavy scenes where
+contamination would be largest.}
+\label{tab:fusion}
+\end{table}
+
+On these clips the static reconstruction is determined by the static majority and
+is not strongly contaminated by the moving minority, so there is little for the
+robust weighting to recover; in addition, as noted in
+Section~\ref{sec:exp-realism}, residual-based downweighting cannot separate moving
+content from structured static prediction error. We therefore do not find a
+reconstruction-quality advantage for robust fusion over global alignment on this
+data. (A camera-pose error metric was attempted but is omitted owing to an
+unresolved convention mismatch between the estimated and ground-truth cameras;
+the near-identical depth of (a) and (b) indicates the poses also differ little.)
+
+% --------------------------------------------------------------------
 \subsection{Summary}
 \label{sec:rd-summary}
 % --------------------------------------------------------------------
@@ -824,11 +873,13 @@ the scene is static-dominant, and its signal is invariant to camera-pose error.
 As a dynamic-region detector it does not exceed optical-flow motion segmentation
 that uses an accurate backbone and standard pose re-estimation, on clean geometry
 or under pose drift, on the Sintel scenes considered; its accuracy is further
-limited when moving content is not a minority. These observations qualify the
+limited when moving content is not a minority. Used instead as a robust fusion
+step, it does not improve static-region reconstruction over standard global
+alignment (Section~\ref{sec:rd-fusion}). These observations qualify the
 unsupervised-detector claim of the introduction: on this evidence the
 contribution is the cohomological formulation of fusion and its synthetic
-characterization, rather than a real-data detector that improves on flow-based
-segmentation.
+characterization, rather than a real-data method that improves on flow-based
+segmentation or on global alignment.
 
 % ====================================================================
 \bibliographystyle{abbrvnat}
