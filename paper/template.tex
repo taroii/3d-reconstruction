@@ -49,8 +49,7 @@
 \newtheorem{remark}{Remark}
 
 % --------------------------------------------------------------------
-\title{Sheaf Reconstruction: Cohomological Consistency for\\
-       Multi-View Pointmap Fusion in Dynamic Scenes}
+\title{Inconsistency Is Motion: A Flow-Free Detector for Dynamic 3D Reconstruction}
 
 \author{%
   Author One \\
@@ -680,6 +679,156 @@ separation bound for the static-dominance precondition, now characterized and
 mitigated empirically (Section~\ref{sec:exp-boundaries}), likewise remains open.
 Validating the construction on $\mathrm{D}^2$USt3R predictions for a real
 dynamic clip is the immediate next step.
+
+% ====================================================================
+\section{Real-Data Study}
+\label{sec:realdata}
+% ====================================================================
+
+We evaluate the harmonic-$\Hcoh^1$ detector on real pointmap predictions and
+compare it against optical-flow motion segmentation. All networks are used
+frozen; no training or fine-tuning is performed. The findings are mixed: the
+synthetic behaviour reproduces qualitatively (the harmonic signal localizes
+moving regions and is invariant to pose error), but as a dynamic-region detector
+the method does not exceed an optical-flow baseline on the data tested. We report
+both outcomes.
+
+% --------------------------------------------------------------------
+\subsection{Setup}
+\label{sec:rd-setup}
+% --------------------------------------------------------------------
+Backbones are from the DUSt3R family: DUSt3R~\citep{wang2024dust3r} (rigid),
+MonST3R~\citep{zhang2025monst3r} and $\mathrm{D}^2$USt3R~\citep{han2026enhancing}
+(fine-tuned on dynamic data). Cross-view correspondence is obtained from
+MASt3R~\citep{leroy2024grounding} feature matching, an appearance-based source
+that uses no optical flow. Per clip we run a backbone once, take its per-view
+depth and poses from global alignment, form the per-correspondence world-frame
+residual $d_k=g_i\,X_i[p_i]-g_j\,X_j[p_j]$, compute the harmonic representative,
+and aggregate per-correspondence energy to pixels by a median over incident
+edges; scores are read only at matched pixels. Clips are five frames with a
+temporal chain and two loop-closure edges.
+
+Data is the MPI-Sintel training split~\citep{butler2012naturalistic} (the only
+split with public ground truth). A pixel is dynamic when its observed flow
+departs from the camera-induced flow by more than $\tau=3$\,px, computed from
+ground-truth depth, pose, and flow, with occluded pixels excluded. The metric is
+AUROC (moving vs.\ static) over scored pixels.
+
+\paragraph{Training-data provenance.}
+The four networks (DUSt3R, MonST3R, $\mathrm{D}^2$USt3R, MASt3R) are not trained
+on Sintel and are zero-shot on this data. The optical-flow estimator used by the
+flow baseline, RAFT~\citep{teed2020raft}, has a Sintel-trained variant; to avoid
+train--test overlap we use a RAFT model trained only on FlyingChairs and
+FlyingThings. The gap between the two RAFT variants on these scenes is
+$\le 0.02$ AUROC.
+
+% --------------------------------------------------------------------
+\subsection{Harmonic energy vs.\ the alignment residual}
+\label{sec:rd-r1}
+% --------------------------------------------------------------------
+We first compare the harmonic energy against the raw residual $\norm{d_k}^2$
+(the quantity global alignment minimizes) as camera poses are perturbed. Over
+$19$ Sintel scenes the harmonic AUROC is unchanged by pose drift ($0.654$ at the
+estimated poses, $0.655$ under added drift), while the raw-residual AUROC falls
+from $0.539$ to $0.441$. Localization quality depends on how much of the scene
+moves: across scenes AUROC is negatively correlated with the dynamic fraction
+(Pearson $r=-0.48$), with mean AUROC $0.72\pm0.11$ on static-dominant scenes
+(dynamic fraction $<0.35$) and $0.47\pm0.22$ when moving content dominates. This
+reproduces, on real data, the static-dominance precondition identified
+synthetically (Section~\ref{sec:exp-boundaries}).
+
+% --------------------------------------------------------------------
+\subsection{Comparison with optical-flow motion segmentation}
+\label{sec:rd-flow}
+% --------------------------------------------------------------------
+The dynamic-region mask released with MonST3R and $\mathrm{D}^2$USt3R is the
+thresholded flow residual $\norm{\text{ego-flow}-\text{RAFT flow}}$, where the
+ego-flow is computed from the backbone's depth and poses. The comparison thus
+reduces to fixing the flow method and varying the geometry that feeds the
+ego-flow. Table~\ref{tab:ladder} reports both detectors on each backbone's
+geometry (six static-dominant scenes, unit stride).
+
+\begin{table}[t]
+\centering
+\begin{tabular}{lcc}
+\toprule
+geometry & harmonic $\Hcoh^1$ & flow residual \\
+\midrule
+DUSt3R (rigid)            & \textbf{0.70} & 0.50 \\
+MonST3R (dynamic-trained) & 0.53 & \textbf{0.91} \\
+$\mathrm{D}^2$USt3R (dynamic-trained) & 0.55 & 0.62 \\
+\bottomrule
+\end{tabular}
+\caption{Dynamic-region AUROC by backbone geometry (mean over six
+static-dominant Sintel scenes, unit stride; bias-free RAFT). The harmonic
+detector is best on the rigid backbone; the flow detector is best on the most
+accurate dynamic-trained geometry.}
+\label{tab:ladder}
+\end{table}
+
+The harmonic detector is strongest on the rigid backbone ($0.70$) and weaker on
+the dynamic-trained backbones, which partially remove the cross-frame
+inconsistency it measures. The flow detector is strongest on the most accurate
+dynamic-trained geometry (MonST3R, $0.91$). Comparing each method at its best
+backbone, the flow detector exceeds the harmonic detector ($0.91$ vs.\ $0.70$).
+
+\paragraph{Behaviour under pose error.}
+Because the ego-flow depends on camera poses, we test whether the harmonic
+detector's pose-invariance yields an advantage as poses degrade. We inject
+accumulating camera drift and report three curves (Table~\ref{tab:drift}): the
+harmonic detector; the flow detector using the drifted poses directly
+(flow-naive); and the flow detector after re-estimating poses on static
+correspondences with the same robust solver (flow-refined). The harmonic
+detector is invariant to drift and flow-naive degrades, as expected; however
+flow-refined is also invariant to drift and remains above the harmonic detector
+at every level. Re-estimating poses from static structure is inexpensive, so
+pose-invariance does not separate the harmonic detector from a flow detector
+allowed to refine its poses. The estimated-pose operating point
+($\approx\!3.9^\circ$/frame from ground truth) already lies in the regime where
+the flow detector is at least as accurate. On the five dynamic-heavy scenes,
+flow-refined is at least as accurate as the harmonic detector on all of them.
+
+\begin{table}[t]
+\centering
+\begin{tabular}{lccc}
+\toprule
+injected drift (deg/frame) & harmonic & flow-naive & flow-refined \\
+\midrule
+$0$ (estimated poses) & 0.70 & 0.91 & \textbf{0.93} \\
+$2$  & 0.69 & 0.67 & \textbf{0.93} \\
+$8$  & 0.70 & 0.59 & \textbf{0.93} \\
+$16$ & 0.71 & 0.51 & \textbf{0.93} \\
+\bottomrule
+\end{tabular}
+\caption{Dynamic-region AUROC under injected camera drift (mean over six
+static-dominant scenes; each method on its best backbone). The harmonic detector
+is drift-invariant, but so is flow-refined, which stays above it throughout.}
+\label{tab:drift}
+\end{table}
+
+\paragraph{Consistency check with $\mathrm{D}^2$USt3R.}
+We also tested whether building the sheaf on $\mathrm{D}^2$USt3R's motion-aligned
+pointmaps suppresses $\Hcoh^1$, since that model warps dynamic pixels to be
+consistent across time. On the scenes tested this did not occur: the harmonic
+energy under $\mathrm{D}^2$USt3R geometry was comparable to that under DUSt3R. We
+confirmed that $d_k$ responds strongly to the geometry change, so the operator is
+not insensitive to it; the alignment $\mathrm{D}^2$USt3R applies does not
+coincide with the world-frame cross-time consistency the operator measures.
+
+% --------------------------------------------------------------------
+\subsection{Summary}
+\label{sec:rd-summary}
+% --------------------------------------------------------------------
+On the data tested, the harmonic-$\Hcoh^1$ detector localizes moving regions when
+the scene is static-dominant, and its signal is invariant to camera-pose error.
+As a dynamic-region detector it does not exceed optical-flow motion segmentation
+that uses an accurate backbone and standard pose re-estimation, on clean geometry
+or under pose drift, on the Sintel scenes considered; its accuracy is further
+limited when moving content is not a minority. These observations qualify the
+unsupervised-detector claim of the introduction: on this evidence the
+contribution is the cohomological formulation of fusion and its synthetic
+characterization, rather than a real-data detector that improves on flow-based
+segmentation.
 
 % ====================================================================
 \bibliographystyle{abbrvnat}

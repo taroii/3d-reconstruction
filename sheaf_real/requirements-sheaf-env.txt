@@ -1,0 +1,25 @@
+# Full dependency setup for the `sheaf` conda env (real-data phase, needs GPU).
+# Reproduce in order:
+#
+#   conda create -n sheaf python=3.11 cmake=3.14.0 && conda activate sheaf
+#   pip install torch==2.5.1 torchvision==0.20.1 torchaudio==2.5.1 \
+#       --index-url https://download.pytorch.org/whl/cu121
+#   pip install -r ../DDUSt3R/requirements.txt
+#   pip install -r requirements-sheaf-env.txt          # the extras below
+#
+# Verify GPU:  python -c "import torch; print(torch.cuda.get_device_name(0))"
+#
+# --- Extras beyond DDUSt3R/requirements.txt, found during integration ---
+evo            # trajectory eval; imported transitively via dust3r.utils.vo_eval
+imageio        # imported by dust3r.utils.image
+scikit-image   # imported by dust3r (skimage)
+#
+# --- Not pip deps, but part of setup (flow-free design) ---
+# The bundled code hard-imports RAFT and SAM2 at load time; both are flow/
+# segmentation tools this project never uses, so they are STUBBED:
+#   ../DDUSt3R/third_party/raft.py        (load_RAFT -> raises if called)
+#   ../DDUSt3R/sam2/build_sam.py          (build_sam2_video_predictor -> raises)
+# We keep flow_loss_weight = 0, so neither is ever invoked.
+#
+# The downstream sheaf/eval code (sheaf.py, eval.py, synth.py) is pure
+# numpy/scipy and runs in the lightweight `sheaf-poc` env (no torch).

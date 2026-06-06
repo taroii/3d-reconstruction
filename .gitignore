@@ -1,2 +1,11 @@
 .vscode/
-*/__pycache__/
+**/__pycache__/
+notes/
+notes/*
+data/
+# real-data phase: heavy / generated, never commit
+DDUSt3R/checkpoints/
+cache/
+results/
+*.pth
+*.zip
