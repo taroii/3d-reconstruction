@@ -1,0 +1,27 @@
+# Python deps for the spectral band-routing project (N_phi training + the
+# alignment-side experiments). Consolidated: DDUSt3R's bundled-dust3r deps plus
+# the extras found during integration. Python 3.11.
+#
+# torch is installed SEPARATELY, CUDA-matched, BEFORE this file — see SETUP.md:
+#   pip install torch==2.5.1 torchvision==0.20.1 torchaudio==2.5.1 \
+#       --index-url https://download.pytorch.org/whl/cu121
+#
+# Then:  pip install -r spectral/requirements.txt
+
+# --- bundled dust3r package (DDUSt3R/requirements.txt) ---
+roma
+gradio
+matplotlib
+tqdm
+opencv-python
+scipy
+einops
+gdown
+trimesh
+pyglet<2
+huggingface-hub[torch]>=0.22
+
+# --- extras imported transitively by dust3r / our code ---
+imageio          # normals.py, sanity_normals.py; dust3r.utils.image
+evo              # dust3r.utils.vo_eval (imported by cloud_opt.base_opt)
+scikit-image     # skimage, imported by dust3r
