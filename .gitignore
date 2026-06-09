@@ -7,6 +7,7 @@ data/
 DDUSt3R/checkpoints/
 cache/
 results/
+archive/
 *.pth
 *.zip
 # cloned third-party repos (not part of this project's source)

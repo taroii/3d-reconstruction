@@ -59,18 +59,43 @@ def depth_discontinuity_mask(depth, rel_thresh=0.05):
     return jump > rel_thresh * np.clip(d, 1e-6, None)
 
 
+def normals_from_depth_K(depth, K, rel_thresh=0.05, max_depth=None):
+    """Dataset-AGNOSTIC core: full-res normals + validity from a z-depth map and
+    intrinsics. Used for every dataset (Sintel/TartanAir/PointOdyssey) so the
+    supervision convention is identical. Invalidates: degenerate tangents,
+    non-finite depth, depth discontinuities, and (optionally) far/sky pixels.
+    Pass invalid pixels in as depth=nan and they are dropped here."""
+    P = backproject(np.nan_to_num(depth, nan=0.0), K)
+    n, tangent_valid = normals_from_points(P)
+    valid = tangent_valid & np.isfinite(depth) & ~depth_discontinuity_mask(
+        np.nan_to_num(depth, nan=0.0), rel_thresh)
+    if max_depth is not None:
+        valid &= depth < max_depth
+    return n, valid
+
+
+def normals_on_grid_from_depth_K(depth, K, size=512, rel_thresh=0.05, max_depth=None):
+    """Agnostic: GT normals + validity resampled to the backbone grid."""
+    n, valid = normals_from_depth_K(depth, K, rel_thresh, max_depth)
+    n_g = to_grid(n, size=size, nearest=False)
+    v_g = to_grid(valid, size=size, nearest=True)
+    mag = np.linalg.norm(n_g, axis=-1, keepdims=True)
+    v_g &= mag[..., 0] > 1e-6
+    n_g = n_g / np.clip(mag, 1e-6, None)
+    return n_g, v_g
+
+
 def gt_normals(root, scene, idx, rel_thresh=0.05):
     """Full-res GT normals + validity for one Sintel frame (1-based idx).
-    Returns (normals (H,W,3), valid (H,W) bool, depth (H,W), K (3,3))."""
+    Thin Sintel wrapper over the agnostic core (kept for sanity_normals)."""
     depth = SI.read_dpt(SI._gt_path(root, "depth", scene, idx, "dpt"))
     K, _ = SI.read_cam(SI._gt_path(root, "camdata_left", scene, idx, "cam"))
-    P = backproject(depth, K)
-    n, tangent_valid = normals_from_points(P)
-    valid = tangent_valid & ~depth_discontinuity_mask(depth, rel_thresh)
     inv_p = SI._gt_path(root, "invalid", scene, idx, "png")
     if os.path.exists(inv_p):
         import imageio.v2 as imageio
-        valid &= imageio.imread(inv_p) == 0          # 255 = invalid
+        depth = depth.copy()
+        depth[imageio.imread(inv_p) != 0] = np.nan      # 255 = invalid -> dropped
+    n, valid = normals_from_depth_K(depth, K, rel_thresh)
     return n, valid, depth, K
 
 
