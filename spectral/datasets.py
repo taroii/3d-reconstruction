@@ -71,22 +71,32 @@ def _sintel_frames(split):
     return out
 
 
-def _scene_is_val(scene):
-    return (sum(scene.encode()) % 10) == 0              # ~10% deterministic holdout
+def _tartanair_val_envs(envs):
+    """Hold out WHOLE environments so train/val never share an environment -- a
+    true cross-environment generalization split (every 5th env in sorted order,
+    deterministic, >=1 held out)."""
+    return set(sorted(set(envs))[::5])
 
 
 def _tartanair_frames(split):
     root = CFG["tartanair"]["root"]
+    rgbs = sorted(glob.glob(os.path.join(root, "*", "*", "P*", "image_left", "*_left.png")))
+    envs = [os.path.relpath(r, root).split(os.sep)[0] for r in rgbs]
+    val_envs = _tartanair_val_envs(envs)                # environment-disjoint
     want_val = split == "val"
+    if want_val:
+        print(f"    tartanair held-out environments: {sorted(val_envs)}", flush=True)
     out = []
-    # <env>/<Easy|Hard>/P0xx/
-    for rgb in sorted(glob.glob(os.path.join(root, "*", "*", "P*", "image_left", "*_left.png"))):
+    for rgb in rgbs:
+        env = os.path.relpath(rgb, root).split(os.sep)[0]
+        if (env in val_envs) != want_val:
+            continue
         traj = os.path.dirname(os.path.dirname(rgb))    # .../P0xx
         scene = os.path.relpath(traj, root).replace(os.sep, "/")
-        if _scene_is_val(scene) != want_val:
-            continue
         base = os.path.basename(rgb).replace("_left.png", "")
         depth = os.path.join(traj, "depth_left", base + "_left_depth.npy")
+        if not os.path.exists(depth):       # partial download: skip, don't crash
+            continue
         idx = int(base)
         out.append(Frame("tartanair", scene, idx, rgb, depth, "",
                          f"tartanair/{scene.replace('/', '_')}/{idx:06d}"))

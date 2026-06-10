@@ -109,28 +109,49 @@ dataset with `--max-per-dataset`, so a modest slice is enough.
 
 ### 5a. Sintel (small, ~2.5 GB needed)
 
+Option A: push your already-extracted local copy. If you have a `~/.ssh/config`
+Host (e.g. `bruinml`) with the cloudflared ProxyCommand, rsync/scp use it
+natively. **bash** (brace expansion OK):
 ```bash
-# easiest: copy what you already have locally
-rsync -av /c/Users/Polar/Documents/3d-reconstruction/data/training/{clean,depth,camdata_left,invalid} \
-      user@server:/path/to/3d-reconstruction/data/training/
-# or re-download (http://sintel.is.tue.mpg.de):
-#   MPI-Sintel-depth-training-20150305.zip  -> training/{depth,camdata_left}/
-#   MPI-Sintel-complete.zip                 -> training/{clean,invalid,...}/
+rsync -av .../data/training/{clean,depth,camdata_left,invalid} \
+  bruinml:/home/<user>/.../3d-reconstruction/data/training/
 ```
+**PowerShell** (no `\` continuation, no `{}` expansion — one line, explicit args;
+`cd` to the source first):
+```powershell
+ssh bruinml 'mkdir -p /home/<user>/.../3d-reconstruction/data/training'
+cd C:\Users\<you>\...\3d-reconstruction\data\training
+rsync -av clean depth camdata_left invalid bruinml:/home/<user>/.../3d-reconstruction/data/training/
+# if rsync errors on the host/ProxyCommand (its bundled ssh may not run
+# cloudflared), use scp -- same Windows OpenSSH transport that already works:
+scp -r clean depth camdata_left invalid bruinml:/home/<user>/.../3d-reconstruction/data/training/
+```
+
+Option B: re-download directly on the server (http://sintel.is.tue.mpg.de):
+`MPI-Sintel-depth-training-20150305.zip` -> `training/{depth,camdata_left}/`;
+`MPI-Sintel-complete.zip` -> `training/{clean,invalid,...}/`.
 
 ### 5b. TartanAir
 
 Tools + download script: <https://github.com/castacks/tartanair_tools>. We need
-only the **left RGB + left depth** modalities. Download a handful of environments
-to start (each env is several GB):
+only the **left RGB + left depth** modalities.
 
 ```bash
-mkdir -p data/tartanair
-# via tartanair_tools (downloads per-environment zips):
-python tartanair_tools/download_training.py --output-dir data/tartanair \
-    --rgb --depth --only-left
-# unzip so the tree is:  data/tartanair/<env>/<Easy|Hard>/P0xx/{image_left,depth_left}/
+git clone https://github.com/castacks/tartanair_tools.git
+pip install boto3 colorama                       # downloader deps
+cd tartanair_tools
+python download_training.py \
+  --output-dir /ABS/PATH/3d-reconstruction/data/tartanair \
+  --rgb --depth --only-left --unzip              # add --huggingface if S3 stalls
+cd ..
+# tree:  data/tartanair/<env>/<Easy|Hard>/P0xx/{image_left,depth_left}/
 ```
+
+⚠️ This downloads **all** training environments (hundreds of GB for rgb+depth).
+You don't need all of it — each env unzips independently, so **Ctrl-C after a few
+environments** finish; the loader uses whatever's on disk and `--max-per-dataset`
+caps it. Then `cd spectral && python sanity_normals.py --dataset tartanair` to
+confirm the loader picks it up before training.
 
 Loader facts (already handled in `datasets.py`): depth is `*_left_depth.npy`
 float32 **z-depth in meters**; intrinsics are fixed `fx=fy=320, cx=320, cy=240`;
@@ -138,18 +159,25 @@ val = ~10% of trajectories held out by a deterministic hash.
 
 ### 5c. PointOdyssey
 
-Site / download: <https://pointodyssey.com> (or repo
-<https://github.com/y-zheng18/point_odyssey>). Download **both `train/` and
-`val/`** (val is the held-out split):
+**Optional and large (~185 GB) — skip to start; add only if Sintel + TartanAir
+don't break the val ceiling.** Hosted on HuggingFace `aharley/pointodyssey` as
+`.tar.gz` (`train.tar.gz.part{aa..ad}` ~135 GB, `val.tar.gz` 20 GB). Fully
+headless/resumable via `huggingface-cli` (huggingface-hub is already installed):
 
 ```bash
-mkdir -p data/pointodyssey
-# unzip so the tree is:
+mkdir -p data/pointodyssey && cd data/pointodyssey
+huggingface-cli download aharley/pointodyssey --repo-type dataset \
+  --include "val.tar.gz" "train.tar.gz.part*" --local-dir .
+cat train.tar.gz.part?? > train.tar.gz && rm train.tar.gz.part??
+tar xzf val.tar.gz && tar xzf train.tar.gz
+cd ../..
+# verify/produce this layout (adjust if the tars lack a train/ or val/ wrapper):
 #   data/pointodyssey/{train,val}/<seq>/{rgbs/, depths/, annot.npz}
 ```
-
-Loader facts: depth is 16-bit PNG, **meters = png/65535×1000** (z-depth);
-intrinsics from `annot.npz['intrinsics'][frame_idx]`.
+(gdown alt: `gdown --folder 1W6wxsbKbTdtV8-2TwToqa_QgLqRY3ft0`.) Loader facts:
+depth 16-bit PNG, **meters = png/65535×1000** (z-depth); intrinsics from
+`annot.npz['intrinsics'][frame_idx]`. Then `sanity_normals --dataset pointodyssey`
+(paste me the extracted tree if the layout differs and I'll fix the glob).
 
 ---
 
@@ -207,6 +235,24 @@ python -u train_nphi.py \
 **Baseline to beat:** the Sintel-only run (`archive/spectral-phase1/`) plateaus at
 **val MAE ≈ 37°**. Watch whether the multi-dataset per-dataset val MAEs come in
 materially lower and, crucially, whether the held-out numbers stop drifting up.
+
+### 7a. Pull the results back to your laptop for review
+
+The log and checkpoint are **gitignored** (`results/`, `*.pth`), so a `git push`
+won't carry them — copy them back over the `bruinml` ssh instead. From your
+**laptop** (PowerShell), after training finishes:
+
+```powershell
+cd C:\Users\Polar\Documents\3d-reconstruction
+# training log (per-epoch + per-dataset val MAE) -- the main review artifact:
+scp bruinml:/home/bruinml/taro/3d-reconstruction/results/nphi_train.log results/
+# (optional) the trained head -- name is nphi_<datasets>.pth; list, then copy:
+ssh bruinml 'ls /home/bruinml/taro/3d-reconstruction/spectral/checkpoints/'
+scp "bruinml:/home/bruinml/taro/3d-reconstruction/spectral/checkpoints/nphi_*.pth" spectral/checkpoints/
+```
+
+Then they're in your local repo for review (the log is enough for the first look;
+grab the checkpoint only if we want to run/visualize the head).
 
 ---
 
