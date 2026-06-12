@@ -1,91 +1,90 @@
-# Server setup — Spectral band-routing prior (`N_φ` training)
+# Server setup — Multi-frame consistency training (branch `multiframe`)
 
-End-to-end guide to run **`N_φ` training** (the DPT normal head on the frozen
-D²USt3R encoder) on a fresh Linux + NVIDIA GPU server, on **Sintel + TartanAir +
-PointOdyssey** (multi-dataset, to get a normal prior that generalizes — Sintel
-alone overfits; see §9). The repo also holds the alignment-side code for the
-later go/no-go, but this guide targets the training run.
+End-to-end guide to prepare a fresh Linux + NVIDIA GPU server for the
+**multi-frame consistency fine-tune** of D²USt3R (paper/new.tex; plan in
+`mfc/PLAN.md`): tuple data on **PointOdyssey + TartanAir (+ Spring)**, the
+D²USt3R checkpoint, and the `dust3r` package the training fork builds on.
+Sections 1–5 (env, clones, checkpoint, data) are ready to run now; §6 (smoke
+tests / training entry) fills in as `mfc/hodge.py` → `mfc/tuples.py` →
+`mfc/train_mfc.py` land (PLAN Phases 1–3).
 
-**Hardware:** 1 NVIDIA GPU ≥12 GB (trains at `--bs 4` on a 12 GB card; raise on
-bigger). CUDA 12.1 driver. Disk: ~6 GB code+checkpoint+Sintel, **plus** whatever
-slice of TartanAir / PointOdyssey you pull (tens–hundreds of GB if greedy — start
-small, §5).
+**Hardware:** 1 NVIDIA GPU, the bigger the better — the full run fine-tunes the
+D²USt3R decoder+heads on 5-frame tuples (the paper used 4×RTX6000 @ bs 4/GPU;
+on one card expect gradient accumulation and ~2× wall-clock). CUDA 12.1 driver.
+Disk: ~6 GB code+checkpoint+Sintel, **plus** PointOdyssey (~185 GB) and a
+TartanAir slice (tens of GB).
 
-Final layout (everything under one parent dir; **run from `spectral/`**):
+Final layout (everything under one parent dir; **run from `mfc/`**):
 
 ```
-3d-reconstruction/              # this repo (branch: new-idea)
-├── spectral/                   # our code — RUN EVERYTHING FROM HERE
-├── DDUSt3R/                    # cloned separately (dust3r pkg + encoder)
+3d-reconstruction/              # this repo (branch: multiframe)
+├── mfc/                        # our code — RUN EVERYTHING FROM HERE
+├── DDUSt3R/                    # cloned separately (dust3r pkg + ckpt + train code)
 │   ├── checkpoints/ddust3r.pth #   downloaded
 │   ├── third_party/raft.py     #   stub (installed)
 │   └── sam2/build_sam.py       #   stub (installed)
 ├── data/
-│   ├── training/{clean,depth,camdata_left,invalid}/<scene>/      # Sintel
-│   ├── tartanair/<env>/<Easy|Hard>/P0xx/{image_left,depth_left}/ # TartanAir
-│   └── pointodyssey/{train,val}/<seq>/{rgbs,depths,annot.npz}    # PointOdyssey
-├── cache/                      # created at runtime (GT-normals cache)
-└── results/                   # created at runtime (logs/checkpoints)
+│   ├── training/{clean,depth,camdata_left,invalid,flow,occlusions}/<scene>/  # Sintel (EVAL ONLY)
+│   ├── tartanair/<env>/<Easy|Hard>/P0xx/{image_left,depth_left,pose_left.txt}/
+│   ├── pointodyssey/{train,val}/<seq>/{rgbs,depths,annot.npz}
+│   └── spring/...              # small; loader added in PLAN Phase 2
+├── cache/                      # created at runtime (tuple/mask cache)
+└── results/                    # created at runtime (logs/checkpoints)
 ```
 
 ---
 
 ## 0. (Local, once) push the branch
 
-The work is on `new-idea` and is **not committed/pushed yet**. From your local
-machine:
+From your local machine:
 
 ```bash
 cd /c/Users/Polar/Documents/3d-reconstruction
-git add spectral SETUP.md
-git add -u                       # stage the sheaf_real->spectral moves & deletions
-git commit -m "Spectral band-routing: multi-dataset N_phi training + scaffolding"
-git push -u origin new-idea
+git push -u origin multiframe
 ```
 
-`data/`, `cache/`, `results/`, `archive/`, `DDUSt3R/`, `mast3r/`, `*.pth`, `*.zip`
-are gitignored — downloaded on the server, not cloned.
+`data/`, `cache/`, `results/`, `DDUSt3R/`, `mast3r/`, `*.pth`, `*.zip` are
+gitignored — downloaded on the server, not cloned.
 
 ---
 
 ## 1. Clone the repos
 
 ```bash
-git clone -b new-idea https://github.com/taroii/3d-reconstruction.git
+git clone -b multiframe https://github.com/taroii/3d-reconstruction.git
 cd 3d-reconstruction
 git clone https://github.com/cvlab-kaist/DDUSt3R.git
 git -C DDUSt3R checkout c900005e48c0f5de2ac6df965100e6bd7d3dd5f1   # pin known-good
 ```
 
-(`croco` is vendored inside DDUSt3R — no `--recursive`. `mast3r` is only for the
-later correspondence experiments; skip for training.)
-
----
+(`croco` is vendored inside DDUSt3R — no `--recursive`. `mast3r` is only needed
+if we revive correspondence experiments; skip.)
 
 ## 2. Python environment + dependencies
 
 ```bash
-conda create -n spectral python=3.11 cmake=3.14.0 -y
-conda activate spectral
+conda create -n mfc python=3.11 cmake=3.14.0 -y
+conda activate mfc
 # torch FIRST, CUDA-matched (don't let requirements pull a CPU build):
 pip install torch==2.5.1 torchvision==0.20.1 torchaudio==2.5.1 \
     --index-url https://download.pytorch.org/whl/cu121
-pip install -r spectral/requirements.txt
+pip install -r mfc/requirements.txt
 python -c "import torch; print(torch.__version__, torch.cuda.get_device_name(0))"
 ```
 
----
-
 ## 3. Install the RAFT/SAM2 stubs
 
-The bundled optimizer hard-imports RAFT and SAM2 at load time but never calls
-them (we keep `flow_loss_weight=0`); a fresh DDUSt3R clone lacks these modules:
+The bundled optimizer hard-imports RAFT and SAM2 at load time; a fresh DDUSt3R
+clone lacks these modules:
 
 ```bash
-python spectral/server/install_stubs.py
+python mfc/server/install_stubs.py
 ```
 
----
+**Note (PLAN Phase 2):** unlike the spectral line, we DO need a real flow model
+for PointOdyssey dynamic masks (no GT flow there). When `tuples.py` lands, a
+real RAFT/SEA-RAFT checkpoint replaces the stub for mask *precomputation* only;
+training itself never calls flow.
 
 ## 4. Download the D²USt3R checkpoint
 
@@ -94,75 +93,67 @@ mkdir -p DDUSt3R/checkpoints
 gdown 1dUy03ohGK2jbzhRLN4HYfDkJIpfGr5lP -O DDUSt3R/checkpoints/ddust3r.pth   # ~4.4 GB
 ```
 
-The **only** checkpoint training needs (we train a head on the frozen D²USt3R
-encoder). DUSt3R/MonST3R/MASt3R are only for the later baselines (appendix).
+The only checkpoint training needs (we fine-tune decoder+heads from it).
+DUSt3R/MonST3R baselines come later for eval tables.
 
 ---
 
 ## 5. Datasets
 
-`N_φ` needs, per frame, only **RGB + GT z-depth + camera intrinsics** — it derives
-normals itself (`datasets.py` → `normals.normals_on_grid_from_depth_K`). Dataset
-roots live in `spectral/datasets.py::CFG`; the on-disk layouts below are what the
-loaders expect. **You don't need all of each dataset** — training caps frames per
-dataset with `--max-per-dataset`, so a modest slice is enough.
+Per frame the tuple pipeline needs **RGB + GT z-depth + intrinsics + camera
+pose**, and flow/masks where the dataset provides them (`mfc/datasets.py::CFG`
+holds the roots; `mfc/tuples.py` will consume them). Priorities follow
+`mfc/PLAN.md` D6: **PointOdyssey and TartanAir are required** (primary dynamic
+supervision and the static anchor, respectively); Spring is small and worth
+adding; Sintel is **eval-only** — never sampled for training.
 
-### 5a. Sintel (small, ~2.5 GB needed)
+### 5a. Sintel (small; eval + debugging)
 
-Option A: push your already-extracted local copy. If you have a `~/.ssh/config`
-Host (e.g. `bruinml`) with the cloudflared ProxyCommand, rsync/scp use it
-natively. **bash** (brace expansion OK):
-```bash
-rsync -av .../data/training/{clean,depth,camdata_left,invalid} \
-  bruinml:/home/<user>/.../3d-reconstruction/data/training/
-```
-**PowerShell** (no `\` continuation, no `{}` expansion — one line, explicit args;
-`cd` to the source first):
+As before, plus **`flow/` and `occlusions/`** (both in
+`MPI-Sintel-complete.zip`) — needed for eval-time dynamic masks and the E5
+diagnostic. If pushing your local copy (PowerShell, scp fallback if rsync's
+bundled ssh balks at the cloudflared ProxyCommand):
+
 ```powershell
 ssh bruinml 'mkdir -p /home/<user>/.../3d-reconstruction/data/training'
 cd C:\Users\<you>\...\3d-reconstruction\data\training
-rsync -av clean depth camdata_left invalid bruinml:/home/<user>/.../3d-reconstruction/data/training/
-# if rsync errors on the host/ProxyCommand (its bundled ssh may not run
-# cloudflared), use scp -- same Windows OpenSSH transport that already works:
-scp -r clean depth camdata_left invalid bruinml:/home/<user>/.../3d-reconstruction/data/training/
+scp -r clean depth camdata_left invalid flow occlusions bruinml:/home/<user>/.../3d-reconstruction/data/training/
 ```
 
-Option B: re-download directly on the server (http://sintel.is.tue.mpg.de):
-`MPI-Sintel-depth-training-20150305.zip` -> `training/{depth,camdata_left}/`;
-`MPI-Sintel-complete.zip` -> `training/{clean,invalid,...}/`.
+Or re-download on the server (http://sintel.is.tue.mpg.de):
+`MPI-Sintel-depth-training-20150305.zip` → `training/{depth,camdata_left}/`;
+`MPI-Sintel-complete.zip` → `training/{clean,invalid,flow,occlusions}/`.
 
-### 5b. TartanAir
+### 5b. TartanAir (required — the static anchor)
 
 Tools + download script: <https://github.com/castacks/tartanair_tools>. We need
-only the **left RGB + left depth** modalities.
+**left RGB + left depth + poses** (pose files ride along in the trajectory
+zips; verify `pose_left.txt` is present after unzip — it's what makes static
+tuples supervisable). GT flow exists for TartanAir if we want it for masks,
+but static scenes ⇒ M_dyn ≡ 0, so it's not needed.
 
 ```bash
 git clone https://github.com/castacks/tartanair_tools.git
-pip install boto3 colorama                       # downloader deps
+pip install boto3 colorama
 cd tartanair_tools
 python download_training.py \
   --output-dir /ABS/PATH/3d-reconstruction/data/tartanair \
   --rgb --depth --only-left --unzip              # add --huggingface if S3 stalls
 cd ..
-# tree:  data/tartanair/<env>/<Easy|Hard>/P0xx/{image_left,depth_left}/
+# tree:  data/tartanair/<env>/<Easy|Hard>/P0xx/{image_left,depth_left}/ + pose_left.txt
 ```
 
-⚠️ This downloads **all** training environments (hundreds of GB for rgb+depth).
-You don't need all of it — each env unzips independently, so **Ctrl-C after a few
-environments** finish; the loader uses whatever's on disk and `--max-per-dataset`
-caps it. Then `cd spectral && python sanity_normals.py --dataset tartanair` to
-confirm the loader picks it up before training.
+⚠️ All environments = hundreds of GB. Each env unzips independently —
+**Ctrl-C after ~6–8 diverse environments**; the loader uses what's on disk.
 
-Loader facts (already handled in `datasets.py`): depth is `*_left_depth.npy`
-float32 **z-depth in meters**; intrinsics are fixed `fx=fy=320, cx=320, cy=240`;
-val = ~10% of trajectories held out by a deterministic hash.
+Loader facts (`datasets.py`): depth is `*_left_depth.npy` float32 z-depth in
+meters; intrinsics fixed `fx=fy=320, cx=320, cy=240`; val = ~10% of
+trajectories by deterministic hash.
 
-### 5c. PointOdyssey
+### 5c. PointOdyssey (required — the primary dynamic source)
 
-**Optional and large (~185 GB) — skip to start; add only if Sintel + TartanAir
-don't break the val ceiling.** Hosted on HuggingFace `aharley/pointodyssey` as
-`.tar.gz` (`train.tar.gz.part{aa..ad}` ~135 GB, `val.tar.gz` 20 GB). Fully
-headless/resumable via `huggingface-cli` (huggingface-hub is already installed):
+~185 GB. Hosted on HuggingFace `aharley/pointodyssey` (`train.tar.gz.part{aa..ad}`
+~135 GB, `val.tar.gz` 20 GB). Headless/resumable:
 
 ```bash
 mkdir -p data/pointodyssey && cd data/pointodyssey
@@ -171,113 +162,33 @@ huggingface-cli download aharley/pointodyssey --repo-type dataset \
 cat train.tar.gz.part?? > train.tar.gz && rm train.tar.gz.part??
 tar xzf val.tar.gz && tar xzf train.tar.gz
 cd ../..
-# verify/produce this layout (adjust if the tars lack a train/ or val/ wrapper):
-#   data/pointodyssey/{train,val}/<seq>/{rgbs/, depths/, annot.npz}
+# layout: data/pointodyssey/{train,val}/<seq>/{rgbs/, depths/, annot.npz}
 ```
-(gdown alt: `gdown --folder 1W6wxsbKbTdtV8-2TwToqa_QgLqRY3ft0`.) Loader facts:
-depth 16-bit PNG, **meters = png/65535×1000** (z-depth); intrinsics from
-`annot.npz['intrinsics'][frame_idx]`. Then `sanity_normals --dataset pointodyssey`
-(paste me the extracted tree if the layout differs and I'll fix the glob).
+
+Loader facts: depth 16-bit PNG, meters = png/65535×1000 (z-depth); intrinsics
+AND extrinsics from `annot.npz` per frame. No GT flow → dynamic masks via
+off-the-shelf RAFT/SEA-RAFT at tuple-cache time (PLAN Phase 2), the same
+recipe D²USt3R itself used for this dataset.
+
+### 5d. Spring (small, optional-but-cheap)
+
+GT flow + dynamic content, ~6k frames (https://spring-benchmark.org). Loader
+added in PLAN Phase 2; grab it when the Phase-2 work starts.
 
 ---
 
-## 6. Verify the setup (smoke tests)
+## 6. Smoke tests + training — filled in by PLAN Phases 1–3
 
-Run **from inside `spectral/`**. Do the per-dataset normals check for **each
-dataset you downloaded** — it confirms the loader, the depth/intrinsics decode,
-and that GT normals land on the backbone grid:
+The old `N_φ` sections don't apply on this branch. As the modules land, this
+section gains:
 
-```bash
-cd spectral
-# (a) backbone loads + a 3-frame alignment runs (~7 s)
-python -c "import backbone as B, sintel as SI; m=B.load_backbone('d2ust3r'); \
-  p=SI.frame_paths('../data','alley_1','clean')[:3]; o=B.run_clip(m,p,niter=30); \
-  print('run_clip OK', o['localpts'][0].shape)"
+1. **G1** (Phase 1): `python -m pytest mfc/test_hodge.py` — differentiable
+   harmonic projection vs `synth.py` ground truth + speed benchmark.
+2. **Phase 2**: `python tuples.py --dataset <d> --check-sheet` → eyeball masks
+   under `results/tuple_sheets/`.
+3. **G2 + full run** (Phase 3): `python train_mfc.py ...` — short-run gate,
+   then the full fine-tune. Recipe per `mfc/PLAN.md` §3.
 
-# (b) per-dataset GT-normals + grid-match (expect 'grid-match ... OK', sane valid%)
-python sanity_normals.py --dataset sintel       --index 0
-python sanity_normals.py --dataset tartanair    --index 0      # if downloaded
-python sanity_normals.py --dataset pointodyssey --index 0      # if downloaded
-#   -> writes results/normals_sanity/<dataset>_*.png; eyeball that walls/ground
-#      are flat-colored and curved surfaces show smooth gradients.
-
-# (c) the head learns (overfit one batch: ~54° -> ~13°)
-python train_nphi.py --overfit
-```
-
-If a dataset's check prints **MISMATCH** or "no frames found", fix its `CFG` root
-/ directory layout before training (the message tells you which path it checked).
-
----
-
-## 7. Run training
-
-```bash
-cd spectral
-mkdir -p ../results
-python -u train_nphi.py \
-    --datasets sintel,tartanair,pointodyssey \
-    --max-per-dataset 6000 \
-    --epochs 30 --bs 4 \
-    2>&1 | tee ../results/nphi_train.log
-```
-
-- **First epoch is slow**: it computes + caches GT normals for every selected
-  frame into `../cache/nphi_normals/<dataset>/<scene>/<idx>.npz`. Later epochs are
-  fast.
-- `--max-per-dataset` evenly subsamples each set (balances huge synthetic data
-  against small Sintel). Tune it to your disk/time budget; `None` uses all.
-- Val MAE is reported **overall and per-dataset** each epoch; best checkpoint →
-  `spectral/checkpoints/nphi_sintel_tartanair_pointodyssey.pth`.
-- **Flags:** `--bs`, `--lr` (1e-4), `--epochs`, `--alpha` (conf-loss weight 0.2),
-  `--datasets`, `--max-per-dataset`, `--seed`.
-
-**Baseline to beat:** the Sintel-only run (`archive/spectral-phase1/`) plateaus at
-**val MAE ≈ 37°**. Watch whether the multi-dataset per-dataset val MAEs come in
-materially lower and, crucially, whether the held-out numbers stop drifting up.
-
-### 7a. Pull the results back to your laptop for review
-
-The log and checkpoint are **gitignored** (`results/`, `*.pth`), so a `git push`
-won't carry them — copy them back over the `bruinml` ssh instead. From your
-**laptop** (PowerShell), after training finishes:
-
-```powershell
-cd C:\Users\Polar\Documents\3d-reconstruction
-# training log (per-epoch + per-dataset val MAE) -- the main review artifact:
-scp bruinml:/home/bruinml/taro/3d-reconstruction/results/nphi_train.log results/
-# (optional) the trained head -- name is nphi_<datasets>.pth; list, then copy:
-ssh bruinml 'ls /home/bruinml/taro/3d-reconstruction/spectral/checkpoints/'
-scp "bruinml:/home/bruinml/taro/3d-reconstruction/spectral/checkpoints/nphi_*.pth" spectral/checkpoints/
-```
-
-Then they're in your local repo for review (the log is enough for the first look;
-grab the checkpoint only if we want to run/visualize the head).
-
----
-
-## 8. ⚠️ Why multi-dataset (the Sintel-only ceiling)
-
-The first run trained on **Sintel only (23 scenes)** and overfit: train MAE → 16°
-but held-out val plateaued at **~37° within a couple of epochs**, then drifted up.
-That's too narrow a distribution. TartanAir + PointOdyssey add large, diverse
-synthetic scenes with the same `depth + K → normals` recipe, which is the fix.
-
-A held-out normal error in the **low-to-mid 20s°** would make the downstream
-go/no-go interpretable. If val MAE is still ~35°+ after adding both datasets,
-revisit: more data variety, augmentation (color/flip/crop), stronger weight decay,
-or a lighter head (`NormalHead(... feature_dim=...)`). Always report `N_φ`'s
-held-out angular error next to any downstream result.
-
----
-
-## Appendix — extras for the later alignment experiments (not needed to train)
-
-```bash
-git clone https://github.com/naver/mast3r.git     # correspondence caching
-# + DUSt3R / MonST3R / MASt3R checkpoints into the respective checkpoints/ dirs.
-```
-
-Filenames the loader expects (`spectral/backbone.py::CKPT`):
-`DUSt3R_ViTLarge_BaseDecoder_512_dpt.pth`,
-`MonST3R_PO-TA-S-W_ViTLarge_BaseDecoder_512_dpt.pth`, `ddust3r.pth`.
+Until then, the only meaningful server check is: env builds (§2), checkpoint
+loads, and `python -c "import backbone as B; B.load_backbone('d2ust3r')"`
+succeeds from `mfc/`.
