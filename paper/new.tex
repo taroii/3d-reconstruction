@@ -1,0 +1,636 @@
+\documentclass{article}
+\usepackage{arxiv}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{hyperref}
+\usepackage{url}
+\usepackage{booktabs}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{amsmath}
+\usepackage{amsthm}
+\usepackage{mathtools}
+\usepackage{bm}
+\usepackage{microtype}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{enumitem}
+\usepackage{natbib}
+
+% --------------------------------------------------------------------
+%  Macros
+% --------------------------------------------------------------------
+\newcommand{\R}{\mathbb{R}}
+\DeclareMathOperator{\SE}{SE}
+\DeclareMathOperator{\Sim}{Sim}
+\DeclareMathOperator{\SO}{SO}
+\DeclareMathOperator{\Ad}{Ad}
+\DeclareMathOperator{\img}{im}
+\DeclareMathOperator{\rank}{rank}
+\DeclareMathOperator{\spann}{span}
+\newcommand{\norm}[1]{\left\lVert #1 \right\rVert}
+\newcommand{\inner}[2]{\left\langle #1,\, #2 \right\rangle}
+\newcommand{\sheaf}{\mathcal{F}}
+\newcommand{\Cochain}{C}
+\newcommand{\Lap}{\mathbf{L}}
+\newcommand{\coboundary}{\delta}
+\newcommand{\restr}[2]{\sheaf_{#1 \,\trianglelefteq\, #2}}
+\newcommand{\Sections}{\Gamma}
+\newcommand{\Hcoh}{H}
+\newcommand{\Mdyn}{M_{\mathrm{dyn}}}
+\newcommand{\Lcons}{\mathcal{L}_{\mathrm{cons}}}
+\newcommand{\Ldyn}{\mathcal{L}_{\mathrm{dyn}}}
+\newcommand{\Lstatic}{\mathcal{L}_{\mathrm{static}}}
+\newcommand{\Lanchor}{\mathcal{L}_{\mathrm{anchor}}}
+\newcommand{\todo}[1]{\textcolor{red}{[TODO: #1]}}
+
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}
+\theoremstyle{plain}
+\newtheorem{theorem}{Theorem}
+\newtheorem{proposition}{Proposition}
+\newtheorem{lemma}{Lemma}
+\theoremstyle{remark}
+\newtheorem{remark}{Remark}
+
+% --------------------------------------------------------------------
+\title{Multi-Frame Consistency for Dynamic Pointmap Regression:\\
+A Sheaf-Theoretic Training Objective}
+% Working title -- alternatives:
+%   "Baking Multi-Frame Consistency into Dynamic Pointmap Regression"
+%   "Lifting Pairwise Pointmaps to Multi-Frame Consistency via Sheaf Cohomology"
+
+\author{%
+  Author One \\
+  Department / Institution \\
+  \texttt{author1@institution.edu} \\
+  \And
+  Author Two \\
+  Department / Institution \\
+  \texttt{author2@institution.edu} \\
+}
+
+\renewcommand{\headeright}{}
+\renewcommand{\undertitle}{}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Feed-forward pointmap regressors in the DUSt3R family map an image
+\emph{pair} to per-pixel 3D coordinates in a shared frame, recovering
+depth, relative pose, and dense correspondence at once.
+$\mathrm{D}^2$USt3R extends this to dynamic scenes with static--dynamic
+aligned pointmaps, but, like its predecessors, it is fundamentally a
+\emph{two-frame} model: reconstructing $N>2$ views relies on a separate,
+post-hoc global-alignment optimization, and the authors note that
+extending the model to video would require an additional global step
+that the network itself does not provide. We argue this multi-frame
+consistency should be a \emph{training} signal, not an inference-time
+patch. The obstacle is that naive multi-frame consistency penalizes
+\emph{all} cross-view disagreement, which forces moving objects into a
+single rigid placement and smears their geometry---precisely the failure
+mode that motivated $\mathrm{D}^2$USt3R. We resolve this by formulating
+multi-frame consistency on a \emph{cellular sheaf} over the view graph,
+whose Hodge decomposition splits cross-view disagreement into a
+pose-explainable (coboundary) part that a camera correction can absorb
+and an irreducible (harmonic) part that only object motion produces. Our
+objective drives the coboundary part to zero---enforcing static
+consistency across the whole tuple---while \emph{permitting} the harmonic
+part on dynamic regions, lifting $\mathrm{D}^2$USt3R's per-pair
+static/dynamic loss split to the multi-frame view graph. A static-scene
+anchor, on which harmonic mass must vanish, together with an explicit
+scale-gauge constraint, keeps the objective non-degenerate. The method is
+a training-time term that sits \emph{on top of} $\mathrm{D}^2$USt3R rather
+than competing with it.
+\todo{Fill in headline numbers once experiments are run.}
+\end{abstract}
+
+% ====================================================================
+\section{Introduction}
+% ====================================================================
+
+Pointmap regression has reshaped multi-view 3D reconstruction. In place
+of the classical pipeline---detect correspondences, estimate poses,
+triangulate, fuse---models in the DUSt3R
+family~\citep{wang2024dust3r,leroy2024grounding} learn a single
+feed-forward map from an image pair $(I^1,I^2)$ to two dense
+\emph{pointmaps}, per-pixel 3D coordinates expressed in a common camera
+frame, so that depth, relative pose, and dense correspondence are read off
+a single prediction. For dynamic scenes, where object motion breaks the
+rigid-alignment assumption, MonST3R~\citep{zhang2025monst3r} retrains on
+moving content and $\mathrm{D}^2$USt3R~\citep{han2026enhancing} introduces
+static--dynamic aligned pointmaps that warp static pixels by camera pose
+and dynamic pixels by optical flow, markedly sharpening reconstruction in
+dynamic regions. We build on $\mathrm{D}^2$USt3R most directly.
+
+\paragraph{The gap: consistency is two-frame.}
+These models are inherently \emph{pairwise}. Recovering a scene from
+$N>2$ views requires a separate \emph{fusion} stage that reconciles the
+overlapping pairwise predictions into one globally consistent geometry,
+handled today by a per-scene global-alignment optimization over per-view
+depths, poses, and intrinsics~\citep{wang2024dust3r,zhang2025monst3r}, or
+by a learned recurrent state~\citep{wang2025continuous,wang20253d}. In
+either case, multi-frame consistency is supplied \emph{after} the
+network, by a generic optimizer that the per-pair predictions were never
+trained to make easy. $\mathrm{D}^2$USt3R is explicit that its model is
+non-generative, takes two frames, and that extending it to video ``would
+require an additional global optimization technique.'' That technique is
+exactly what is missing, and we contend it should be folded into training:
+a network that emits pairwise predictions which are already
+multi-frame-consistent removes the need to repair them downstream.
+
+\paragraph{Why naive multi-frame consistency is wrong for dynamics.}
+The obvious move---add a loss penalizing cross-view pointmap disagreement
+over $N>2$ frames---fails in exactly the regime we care about. A moving
+object photographed at two times has \emph{no} single rigid placement
+consistent with both views; penalizing its disagreement forces the
+network to pick one, smearing the object across its trajectory. This is
+the MonST3R failure $\mathrm{D}^2$USt3R diagnoses: aligning all pointmaps
+by a single global rigid transform corrupts moving regions. A usable
+multi-frame consistency objective must therefore \emph{distinguish} the
+disagreement a camera correction can explain (which should vanish) from
+the disagreement only motion can produce (which must be allowed). That
+distinction is not a heuristic threshold; it is an exact algebraic split.
+
+\paragraph{Our viewpoint.}
+Index the $N$ views by the vertices of a \emph{view graph} $G=(V,E)$, with
+an edge per related pair. The per-pair predictions assign a local geometry
+to each view and a relative transform to each edge---the data of a
+\emph{cellular sheaf}~\citep{curry2014sheaves,ghrist2014elementary} whose
+stalks are per-view geometries and whose restriction maps are the
+predicted transforms. A globally consistent reconstruction is a
+\emph{global section} of this sheaf: an assignment that agrees, edge by
+edge, after restriction. The sheaf Laplacian's Hodge decomposition then
+splits any cross-view residual into a \emph{coboundary} part---removable
+by a per-view (pose/frame) correction---and a \emph{harmonic} part, the
+first cohomology $\Hcoh^1(G;\sheaf)$, that no per-view correction can
+remove~\citep{hansen2019toward,robinson2017sheaves}. Camera-pose error and
+drift live entirely in the coboundary; irreducible cross-view
+disagreement, the signature of object motion, lives in the harmonic part.
+This is precisely the split a dynamics-aware consistency loss needs, and
+it generalizes $\mathrm{D}^2$USt3R's per-pair static/dynamic supervision
+to the whole tuple.
+
+\paragraph{From detector to objective.}
+We stress what this paper is \emph{not}. A natural temptation is to use
+the harmonic part as an unsupervised, flow-free \emph{detector} of moving
+regions. We do not pursue that: optical-flow motion segmentation, given an
+accurate backbone, is already strong, and a detector competes with it on
+its own ground. Our contribution is instead a \emph{training objective}
+that uses the coboundary/harmonic split to shape the network's
+predictions, so that static structure becomes multi-frame-consistent by
+construction while dynamic structure is left free. The role is
+complementary to $\mathrm{D}^2$USt3R, not competing.
+
+\paragraph{Non-degeneracy.}
+A consistency objective is gameable: the network can drive cross-view
+disagreement to zero by collapsing scale, over-smoothing geometry, or
+agreeing trivially. We close this with two constraints. First, a
+\emph{static-scene anchor}: on sequences known to be rigid, the harmonic
+part must vanish everywhere, which forbids the network from explaining
+static structure as motion. Second, an explicit \emph{scale-gauge}
+constraint pinning the one global degree of freedom (the uniform log-scale
+direction) that no differential consistency term can determine and that
+otherwise admits a collapse to a point.
+
+\paragraph{Contributions.}
+\begin{enumerate}[leftmargin=1.4em,itemsep=0.15em,topsep=0.2em]
+  \item We recast multi-frame pointmap consistency as the search for a
+        global section of a cellular sheaf on the view graph, and identify
+        its coboundary/harmonic split with the static/dynamic split that a
+        dynamics-aware consistency loss requires
+        (Section~\ref{sec:method}). This lifts $\mathrm{D}^2$USt3R's
+        per-pair static/dynamic supervision to $N>2$ frames.
+  \item We turn this split into a training objective that enforces
+        multi-frame static consistency while permitting dynamic motion,
+        regularized by a static-scene anchor and a scale gauge that make
+        it non-degenerate, and that attaches to a frozen-encoder
+        $\mathrm{D}^2$USt3R backbone as an added term
+        (Section~\ref{sec:method}).
+  \item We design an experimental protocol (Section~\ref{sec:experiments})
+        that tests whether the objective improves multi-frame
+        reconstruction over the two-frame baseline, isolates the
+        coboundary/harmonic split against naive consistency, and verifies
+        non-degeneracy on static-scene controls.
+\end{enumerate}
+
+% ====================================================================
+\section{Preliminaries}
+\label{sec:prelim}
+% ====================================================================
+
+We fix notation for pointmaps and multi-frame fusion
+(Section~\ref{sec:prelim-pointmaps}), recall cellular sheaves and their
+Hodge/Laplacian structure (Section~\ref{sec:prelim-sheaves}), and assemble
+the reconstruction sheaf the objective is built on
+(Section~\ref{sec:recon-sheaf}).
+
+% --------------------------------------------------------------------
+\subsection{Pointmaps and multi-frame fusion}
+\label{sec:prelim-pointmaps}
+% --------------------------------------------------------------------
+
+Let $I^1,\dots,I^N$ be images of resolution $W\times H$. A \emph{pointmap}
+$X^{n,m}\in\R^{W\times H\times 3}$ assigns to each pixel of image $n$ its
+3D location in the camera frame of image $m$. For a pair $(n,m)$ the
+backbone~\citep{wang2024dust3r,zhang2025monst3r,han2026enhancing} regresses
+$X^{n,m}$ and $X^{m,m}$ with per-pixel confidences $C^{n,m}$, from which
+depth, the relative camera transform, and dense correspondence follow.
+Writing $\pi_K^{-1}(p,d)=d\,K^{-1}\tilde p$ for back-projection of pixel
+$p$ at depth $d$ through intrinsics $K$, each view $n$ with depth $D_n$,
+pose $g_n\in\SE(3)$, and intrinsics $K_n$ contributes world-frame points
+\begin{equation}
+  \chi_n(p) \;=\; g_n \cdot \pi_{K_n}^{-1}\!\big(p,\,D_n(p)\big).
+  \label{eq:chi}
+\end{equation}
+
+\paragraph{$\mathrm{D}^2$USt3R supervision (what we extend).}
+$\mathrm{D}^2$USt3R supervises a pair with a dynamic-mask-gated split: a
+static regression term aligning static pixels by camera pose, and a
+dynamic alignment term aligning moving pixels via optical-flow
+correspondence, gated by a dynamic mask $\Mdyn$ derived from the
+discrepancy between observed flow and camera-induced flow. Our objective
+keeps this per-pair supervision and adds a multi-frame consistency term
+with the \emph{same} static/dynamic split, now defined across a view
+graph rather than a single edge.
+
+\paragraph{The view graph and global alignment.}
+Collect the views as vertices of a view graph $G=(V,E)$, with an edge
+$e=(i,j)$ wherever the backbone relates views $i$ and $j$. Standard fusion
+minimizes a confidence-weighted pairwise disagreement
+\begin{equation}
+  \mathcal{L}_{\mathrm{align}}
+  \;=\;
+  \sum_{e=(i,j)\in E}\;\sum_{n\in\{i,j\}}\;\sum_{p}
+  \nu_n(p)\,
+  \big\lVert
+     \chi_n(p) \;-\; g_e\!\left(\sigma_e\, X^{(e)}_n(p)\right)
+  \big\rVert
+  \label{eq:align}
+\end{equation}
+over per-view $\{D_n,g_n,K_n\}$ and per-edge $\{g_e,\sigma_e\}$, by
+gradient descent at inference time~\citep{wang2024dust3r}. Two features
+matter. First, \eqref{eq:align} couples variables \emph{only} through
+shared correspondence on edges: its structure is a function on the graph.
+Second, it is run \emph{post hoc}, per scene, and presumes a consistent
+rigid geometry exists---which under object motion it does not. We keep the
+edge-local structure of \eqref{eq:align} but move it into training and
+replace ``descend on the full residual'' with ``drive the consistent part
+to zero and leave the motion part free.''
+
+% --------------------------------------------------------------------
+\subsection{Cellular sheaves and the Hodge split}
+\label{sec:prelim-sheaves}
+% --------------------------------------------------------------------
+
+We recall the minimal vocabulary; see \citet{curry2014sheaves} and
+\citet{hansen2019toward} for full treatments.
+
+\begin{definition}[Cellular sheaf]
+A \emph{cellular sheaf} $\sheaf$ of finite-dimensional real vector spaces
+on $G=(V,E)$ assigns a \emph{stalk} $\sheaf(v)$ to each vertex, a stalk
+$\sheaf(e)$ to each edge, and a linear \emph{restriction map}
+$\restr{v}{e}:\sheaf(v)\to\sheaf(e)$ to each incident pair
+$v\trianglelefteq e$.
+\end{definition}
+
+The $0$-cochains $\Cochain^0=\bigoplus_v\sheaf(v)$ collect local data at
+every vertex; the $1$-cochains $\Cochain^1=\bigoplus_e\sheaf(e)$ collect
+data on every edge. With an orientation on each edge $e=(i,j)$, the
+\emph{coboundary} $\coboundary:\Cochain^0\to\Cochain^1$ compares endpoints,
+\begin{equation}
+  (\coboundary x)_e \;=\; \restr{j}{e}\,x_j \;-\; \restr{i}{e}\,x_i,
+  \qquad e=(i,j).
+  \label{eq:coboundary}
+\end{equation}
+A $0$-cochain is a \emph{global section} if $\coboundary x=0$: the local
+data agree on every edge after restriction. Equipping stalks with inner
+products gives $\coboundary$ an adjoint $\coboundary^{\!\top}$ and the
+\emph{sheaf Laplacian}
+$\Lap_{\sheaf}=\coboundary^{\!\top}\coboundary$, a sparse PSD operator
+inheriting the sparsity of $G$.
+
+\begin{lemma}[Hodge split; obstruction is cohomology
+{\citep{hansen2019toward}}]
+\label{lem:hodge}
+$\ker\Lap_{\sheaf}=\ker\coboundary=\Sections(G;\sheaf)=\Hcoh^0(G;\sheaf)$,
+and any $1$-cochain $r\in\Cochain^1$ decomposes orthogonally as
+\[
+  r \;=\; \underbrace{\coboundary\xi}_{\text{coboundary part}}
+        \;\oplus\;
+        \underbrace{h}_{\text{harmonic part}},
+  \qquad
+  h\in\ker\coboundary^{\!\top}\cong\Hcoh^1(G;\sheaf),
+\]
+where $\coboundary\xi$ is the part of $r$ that some choice of vertex data
+(a per-view correction) removes, and $h$ is the irreducible residual no
+such choice can remove. In particular $\Hcoh^1=0$ iff every edge residual
+is explained by a global section.
+\end{lemma}
+
+Lemma~\ref{lem:hodge} is the backbone of the method. Reading the edge
+residual of \eqref{eq:align} as a $1$-cochain, the coboundary part is
+exactly what a per-view pose/frame correction absorbs---including camera
+drift---and the harmonic part is what remains, the cross-view
+disagreement attributable to object motion.
+
+% --------------------------------------------------------------------
+\subsection{The reconstruction sheaf}
+\label{sec:recon-sheaf}
+% --------------------------------------------------------------------
+
+Place the fusion problem of \eqref{eq:align} on the sheaf of
+Section~\ref{sec:prelim-sheaves}, on the view graph
+$G=(V,E)$.\footnote{We instantiate stalks in two ways. A
+\emph{coordinate} model takes $\sheaf(v)$ to be the per-pixel world-frame
+points $\chi_v$ of \eqref{eq:chi}; a \emph{pose} model takes $\sheaf(v)$
+to be the tangent space of view $v$'s frame and scale, a copy of
+$\mathfrak{se}(3)\oplus\R$, used where a per-view correction must be
+linear. \todo{Decide which model the loss uses in practice; the pose
+model makes the coboundary correction exactly ``a camera fix,'' the
+coordinate model is simpler to differentiate.}}
+The edge stalk $\sheaf(e)$ over $e=(i,j)$ is the geometry on the shared
+overlap, into which both endpoints restrict via back-projection
+\eqref{eq:chi} and the edge's correspondence field. By construction,
+$(\coboundary x)_e=0$ encodes exactly the per-edge agreement term inside
+\eqref{eq:align}, so $\mathcal{L}_{\mathrm{align}}$ is, up to confidence
+weights folded into the stalk inner products, the sheaf Dirichlet energy
+$\tfrac12\inner{x}{\Lap_{\sheaf}x}=\tfrac12\norm{\coboundary x}^2$.
+
+\begin{remark}[Two subtleties carried into training]
+\label{rem:subtleties}
+First, poses live in a non-abelian group, so the linear coboundary
+\eqref{eq:coboundary} is exact only on tangent stalks; in training we
+recompute the residual each step, a re-linearization that is automatic
+under gradient descent~\citep{singer2011angular,rosen2019se}. Second, the
+restriction maps depend on the correspondence field, which depends on the
+geometry being solved for; we treat the backbone's per-pair predictions as
+the source of restriction maps within a step and let them co-evolve with
+the weights across steps.
+\end{remark}
+
+% ====================================================================
+\section{Method}
+\label{sec:method}
+% ====================================================================
+
+\paragraph{Overview.}
+We fine-tune a $\mathrm{D}^2$USt3R backbone on $N$-frame tuples with an
+objective that adds a multi-frame consistency term to the existing
+per-pair supervision. The consistency term uses the Hodge split of
+Lemma~\ref{lem:hodge}: it drives the coboundary part of the cross-view
+residual to zero on static regions, while leaving the harmonic part free
+on dynamic regions. A static-scene anchor and a scale gauge make it
+non-degenerate. The total objective is
+\begin{equation}
+  \mathcal{L}
+  \;=\;
+  \underbrace{\Lstatic + \Ldyn}_{\text{per-pair (D$^2$USt3R)}}
+  \;+\;
+  \lambda_{\mathrm{c}}\,\Lcons
+  \;+\;
+  \lambda_{\mathrm{a}}\,\Lanchor,
+  \label{eq:total}
+\end{equation}
+where $\Lstatic,\Ldyn$ are retained from $\mathrm{D}^2$USt3R and the new
+terms are defined below. \todo{Confirm the per-pair terms are kept as-is
+or chained across the tuple; see E2.}
+
+\paragraph{Multi-frame consistency (the new term).}
+For a tuple with view graph $G=(V,E)$, form the per-edge world-frame
+residual from the backbone's predictions,
+$r_e = \restr{j}{e}x_j - \restr{i}{e}x_i$, and take its harmonic part
+$h_e$ via the projection of Lemma~\ref{lem:hodge}
+(equivalently, $h = r - \coboundary\xi^\star$ with
+$\xi^\star=\arg\min_\xi\norm{r-\coboundary\xi}^2$, a sparse least-squares
+solve, differentiable in the predictions). The consistency loss penalizes
+the \emph{coboundary} part on static pixels and the \emph{harmonic} part
+only where it should not be---i.e. on static pixels---while leaving
+dynamic pixels free:
+\begin{equation}
+  \Lcons
+  \;=\;
+  \sum_{e\in E}\sum_{p}
+  \big(1-\Mdyn(p)\big)\,
+  \nu(p)\,
+  \norm{\,r_e(p)\,}^2 .
+  \label{eq:cons}
+\end{equation}
+On static pixels the full residual must be coboundary (a camera fix
+explains it); on dynamic pixels the gate $\big(1-\Mdyn\big)$ removes the
+penalty, so the harmonic mass that motion produces is permitted rather
+than fought. \todo{Decide whether dynamic pixels are merely \emph{ungated}
+(left free, as written) or \emph{positively supervised} by chaining
+$\Ldyn$ across the tuple via flow---the latter is stronger but needs
+multi-frame correspondence chaining.}
+
+\paragraph{Non-degeneracy: static anchor + scale gauge.}
+On rigid sequences, $\Mdyn\equiv 0$, so \eqref{eq:cons} forces the
+\emph{entire} residual---and hence the harmonic mass---toward zero: a
+scene with no motion may carry no irreducible inconsistency. This is the
+anchor that forbids the network from explaining static structure as
+motion. We additionally pin the uniform log-scale direction (the DC mode
+of $\Sim(3)$, which otherwise admits a collapse-to-a-point that drives
+\eqref{eq:cons} to zero trivially):
+\begin{equation}
+  \Lanchor
+  \;=\;
+  \underbrace{\mathbb{1}[\text{static tuple}]\sum_{e,p}\norm{h_e(p)}^2}_{\text{harmonic must vanish}}
+  \;+\;
+  \underbrace{\big(\log\textstyle\operatorname{med}_{n,p}D_n(p)-\log s_0\big)^2}_{\text{scale gauge}} .
+  \label{eq:anchor}
+\end{equation}
+\todo{The two pieces of \eqref{eq:anchor} may want separate weights; the
+scale term may instead be a hard normalization per step.}
+
+\begin{remark}[Why the split is the contribution, not the consistency]
+Dropping the gate and the split in \eqref{eq:cons} recovers a naive
+multi-frame consistency loss, which penalizes moving-object disagreement
+and reproduces the MonST3R smearing failure. The ablation E2 is designed
+to show that the split, not multi-frame supervision per se, is what
+buys the dynamic-region gain.
+\end{remark}
+
+% ====================================================================
+\section{Experiments (skeleton)}
+\label{sec:experiments}
+% ====================================================================
+
+This section is an outline of the claims to establish and the experiments
+that test them. Each subsection states the claim, the comparison, the
+metric, and---explicitly---the result that would \emph{falsify} the claim,
+so a null result is informative rather than ambiguous.
+
+% --------------------------------------------------------------------
+\subsection{Setup}
+\label{sec:exp-setup}
+% --------------------------------------------------------------------
+
+\paragraph{Backbone and training.}
+We start from a $\mathrm{D}^2$USt3R checkpoint, freeze the encoder, and
+fine-tune the decoder and heads (the protocol $\mathrm{D}^2$USt3R and
+MonST3R use), now on $N$-frame tuples rather than pairs.
+\todo{Fix $N$ (e.g. $N\!\in\!\{4,5\}$), the view-graph topology
+(temporal chain $+$ loop edges), optimizer, LR, epochs, GPU budget.}
+
+\paragraph{Training data and the role of each set.}
+\begin{itemize}[leftmargin=1.4em,itemsep=0.1em,topsep=0.1em]
+  \item \textbf{PointOdyssey}~\todo{cite}: long realistic-dynamic
+        sequences with point tracks; the primary source of $N>2$ dynamic
+        supervision and of chained correspondence for the dynamic term.
+  \item \textbf{TartanAir}~\todo{cite}: large, fully \emph{static}; the
+        non-degeneracy anchor of \eqref{eq:anchor}---harmonic mass must
+        vanish here. Used for training the anchor, \emph{not} as a
+        benchmark (the backbone has seen it).
+  \item \textbf{(Optional) BlinkVision / Spring}~\todo{cite}: realistic
+        dynamics with dynamic masks and flow, if additional dynamic
+        coverage is needed.
+\end{itemize}
+
+\paragraph{Evaluation data (held out).}
+\begin{itemize}[leftmargin=1.4em,itemsep=0.1em,topsep=0.1em]
+  \item \textbf{Bonn}, \textbf{TUM-Dynamics}~\todo{cite}: real,
+        static-dominant dynamic scenes with accurate backbone
+        predictions---the clean regime for multi-frame depth.
+  \item \textbf{KITTI}~\todo{cite}: driving; static-dominant background
+        with rigid moving vehicles---the motivating regime, and the one
+        where multi-frame static consistency should help most.
+  \item \textbf{Sintel}~\todo{cite}: reported \emph{only} for
+        comparability with prior work, with the caveat that its
+        dynamic-dominant scenes are out of the regime the method targets;
+        not used to support the main claim.
+\end{itemize}
+\todo{Confirm train/test disjointness for every eval set against the
+backbone's training data.}
+
+\paragraph{Metrics.}
+Affine-invariant depth (AbsRel, $\delta_1$) over the whole scene and over
+dynamic regions separately, following $\mathrm{D}^2$USt3R; camera pose
+(rotation/translation error) where applicable.
+
+% --------------------------------------------------------------------
+\subsection{E1 --- Headline: multi-frame consistency improves reconstruction}
+\label{sec:e1}
+% --------------------------------------------------------------------
+\textbf{Claim.} Adding $\Lcons$ improves multi-frame reconstruction over
+the two-frame $\mathrm{D}^2$USt3R baseline, especially as the number of
+frames grows.\\
+\textbf{Comparison.} $\mathrm{D}^2$USt3R (two-frame $+$ post-hoc global
+alignment) vs.\ ours (trained with $\Lcons$) on $N$-frame tuples.\\
+\textbf{Metric.} Multi-frame depth AbsRel/$\delta_1$, all and dynamic.\\
+\textbf{Falsifier.} No improvement on \emph{static} regions of held-out
+multi-frame sequences (Bonn/TUM/KITTI) $\Rightarrow$ the consistency term
+does nothing the post-hoc optimizer was not already doing.
+
+\begin{table}[h]
+\centering
+\begin{tabular}{lcccc}
+\toprule
+ & \multicolumn{2}{c}{All} & \multicolumn{2}{c}{Dynamic} \\
+Method & AbsRel$\downarrow$ & $\delta_1\uparrow$ & AbsRel$\downarrow$ & $\delta_1\uparrow$ \\
+\midrule
+$\mathrm{D}^2$USt3R (baseline) & \todo{} & \todo{} & \todo{} & \todo{} \\
+Ours ($+\,\Lcons$)            & \todo{} & \todo{} & \todo{} & \todo{} \\
+\bottomrule
+\end{tabular}
+\caption{E1: multi-frame depth on held-out static-dominant sequences.
+\todo{Mean over Bonn/TUM/KITTI; report per-dataset in appendix.}}
+\label{tab:e1}
+\end{table}
+
+% --------------------------------------------------------------------
+\subsection{E2 --- The split is what matters (vs.\ naive consistency)}
+\label{sec:e2}
+% --------------------------------------------------------------------
+\textbf{Claim.} The coboundary/harmonic split, not multi-frame
+supervision per se, produces the dynamic-region gain; naive multi-frame
+consistency \emph{hurts} dynamic regions by smearing moving objects.\\
+\textbf{Comparison.} (a) no consistency term (baseline); (b) naive
+consistency (penalize the full residual on all pixels, no gate, no split);
+(c) ours (gated split, \eqref{eq:cons}).\\
+\textbf{Metric.} Dynamic-region depth; qualitative pointmaps on moving
+objects.\\
+\textbf{Falsifier.} (b) and (c) tie on dynamic regions $\Rightarrow$ the
+split is unnecessary and the story collapses to ``multi-frame helps.''
+
+\begin{table}[h]
+\centering
+\begin{tabular}{lcc}
+\toprule
+Consistency variant & Dyn.\ AbsRel$\downarrow$ & Dyn.\ $\delta_1\uparrow$ \\
+\midrule
+(a) none (baseline)        & \todo{} & \todo{} \\
+(b) naive (full residual)  & \todo{} & \todo{} \\
+(c) split (ours)           & \todo{} & \todo{} \\
+\bottomrule
+\end{tabular}
+\caption{E2: ablating the Hodge split. Expectation: (b) $<$ (a) on dynamic
+regions (smearing), (c) $>$ (a).}
+\label{tab:e2}
+\end{table}
+
+% --------------------------------------------------------------------
+\subsection{E3 --- Non-degeneracy: the objective is not gamed}
+\label{sec:e3}
+% --------------------------------------------------------------------
+\textbf{Claim.} The static anchor and scale gauge prevent collapse; on
+static-scene controls the network produces near-zero harmonic mass, and
+removing the anchors lets the objective degrade.\\
+\textbf{Comparison.} ours with vs.\ without (i) the static anchor, (ii)
+the scale gauge.\\
+\textbf{Metric.} Harmonic energy on held-out static scenes (should be
+$\approx 0$); depth scale statistics (no collapse); overall depth.\\
+\textbf{Falsifier.} Removing the anchors does \emph{not} degrade results
+$\Rightarrow$ the anchors are inert and the gameability concern (and thus
+part of the method's justification) was misplaced.
+\todo{Also report: does harmonic energy on truly static held-out scenes
+stay low without those scenes being in training (generalization of the
+anchor)?}
+
+% --------------------------------------------------------------------
+\subsection{E4 --- Robustness to frame count and interval}
+\label{sec:e4}
+% --------------------------------------------------------------------
+\textbf{Claim.} The benefit grows (or at least holds) with the number of
+frames and with temporal stride, where the post-hoc two-frame baseline
+degrades.\\
+\textbf{Comparison.} ours vs.\ baseline across $N$ and stride
+$\Delta t\in\{1,3,5,7,9\}$ (cf.\ $\mathrm{D}^2$USt3R's interval study).\\
+\textbf{Metric.} Multi-frame depth vs.\ $\Delta t$ and $N$.\\
+\textbf{Falsifier.} The gap to baseline is flat or shrinking in $N$
+$\Rightarrow$ multi-frame structure is not being exploited.
+
+% --------------------------------------------------------------------
+\subsection{E5 --- (Optional) Pose-error robustness as a diagnostic}
+\label{sec:e5}
+% --------------------------------------------------------------------
+\textbf{Claim (diagnostic, not headline).} Because camera-pose error lives
+in the coboundary, the harmonic part of the residual---and hence the
+dynamic supervision derived from it---is robust to pose error, unlike a
+raw-residual consistency term.\\
+\textbf{Comparison.} harmonic vs.\ raw-residual term under injected camera
+drift.\\
+\textbf{Metric.} Stability of the term / of dynamic-region depth as drift
+grows.\\
+\textbf{Note.} This is the property the sheaf formalism predicts and the
+one place the cohomological framing is doing visible work; report it as a
+mechanism check, not as a competitor to flow.
+
+% --------------------------------------------------------------------
+\subsection{What this section is \emph{not} testing}
+\label{sec:exp-scope}
+% --------------------------------------------------------------------
+We do not evaluate an unsupervised dynamic-region detector, do not compare
+against optical-flow motion segmentation, and do not claim improved
+camera-pose estimation as a headline. The contribution is a training-time
+multi-frame consistency objective that improves reconstruction on top of
+$\mathrm{D}^2$USt3R; the experiments are scoped to that claim.
+
+% ====================================================================
+\bibliographystyle{abbrvnat}
+\bibliography{references}
+% ====================================================================
+
+\end{document}
