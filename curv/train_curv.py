@@ -124,7 +124,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--backbone", default="d2ust3r")
     ap.add_argument("--datasets", default="tartanair",
-                    help="comma list: tartanair,pointodyssey (sintel is eval-only)")
+                    help="comma list: tartanair,pointodyssey,spring (sintel is eval-only)")
     ap.add_argument("--mode", default="mean", choices=["mean", "gaussian"])
     ap.add_argument("--no-compress", action="store_true",
                     help="supervise raw curvature instead of signed-log target")

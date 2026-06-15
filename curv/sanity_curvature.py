@@ -3,8 +3,8 @@ Sanity checks for the discrete curvature estimators (curvature.py), plus an
 optional qualitative dump on a real frame.
 
   python sanity_curvature.py                       # synthetic-surface unit checks
-  python sanity_curvature.py --dataset sintel --scene alley_1 --idx 1
-                                                   # dump a real-frame curvature PNG
+  python sanity_curvature.py --dataset tartanair   # dump a real-frame curvature PNG
+  python sanity_curvature.py --dataset spring --pick 50 --mode gaussian
 
 Synthetic checks build the pointmap P directly for surfaces with known curvature
 and verify SIGNS and relative magnitudes (the discrete angle-deficit Gaussian is
@@ -62,33 +62,38 @@ def synthetic_checks():
     return ok
 
 
-def real_dump(dataset, scene, idx, mode):
+def real_dump(dataset, pick, mode):
+    """Dataset-agnostic: pick one frame, compute GT curvature from depth+K, and
+    write a diverging-colormap PNG (works for any dataset in datasets.CFG)."""
     import imageio.v2 as imageio
-    from datasets import CFG
-    root = CFG[dataset]["root"]
-    if dataset != "sintel":
-        raise SystemExit("real dump wrapper currently wired for sintel only "
-                         "(uses curvature.gt_curvature); other datasets via "
-                         "curvature.curvature_from_depth_K + datasets.load_depth_K).")
-    Kmap, valid, depth, K = CV.gt_curvature(root, scene, idx, mode=mode)
+    import datasets as DS
+    frames = DS.build_frames([dataset], "train")
+    if not frames:
+        raise SystemExit(f"no {dataset} frames found under {DS.CFG[dataset]['root']}")
+    fr = frames[min(pick, len(frames) - 1)]
+    depth, K = DS.load_depth_K(fr)
+    cfg = DS.CFG[dataset]
+    Kmap, valid = CV.curvature_from_depth_K(
+        depth, K, mode=mode, rel_thresh=cfg["rel_thresh"], max_depth=cfg["max_depth"])
     rgb = (CV.curvature_to_rgb(np.where(valid, Kmap, 0.0)) * 255).astype(np.uint8)
-    out = f"curv_{dataset}_{scene}_{idx:04d}_{mode}.png"
+    out = f"curv_{fr.key.replace('/', '_')}_{mode}.png"
     imageio.imwrite(out, rgb)
-    print(f"valid {valid.mean()*100:.1f}%  K range [{Kmap[valid].min():+.3f}, "
-          f"{Kmap[valid].max():+.3f}]  -> {out}")
+    vk = Kmap[valid]
+    rng = f"[{vk.min():+.3f}, {vk.max():+.3f}]" if vk.size else "(no valid px)"
+    print(f"{fr.key}  valid {valid.mean()*100:.1f}%  K range {rng}  -> {out}")
 
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--dataset", default=None)
-    ap.add_argument("--scene", default="alley_1")
-    ap.add_argument("--idx", type=int, default=1)
+    ap.add_argument("--dataset", default=None,
+                    help="sintel|tartanair|pointodyssey|spring (omit for synthetic checks)")
+    ap.add_argument("--pick", type=int, default=0, help="frame index into the dataset")
     ap.add_argument("--mode", default="mean", choices=["mean", "gaussian"])
     args = ap.parse_args()
     if args.dataset is None:
         synthetic_checks()
     else:
-        real_dump(args.dataset, args.scene, args.idx, args.mode)
+        real_dump(args.dataset, args.pick, args.mode)
 
 
 if __name__ == "__main__":

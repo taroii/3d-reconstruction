@@ -121,6 +121,15 @@ def signed_log(K):
     return np.sign(K) * np.log1p(np.abs(K))
 
 
+def curvature_weight(K_gt, gamma=1.0):
+    """Option 2 (brief): per-pixel loss weight upweighting geometrically complex
+    regions,  w = 1 + gamma * |K_gt|. Works on numpy arrays or torch tensors
+    (only abs() is used). Multiply the existing static/dynamic per-pixel losses
+    by this in the D2USt3R training loop. Use the SAME K_gt convention (mode,
+    normalization) as the curvature head so gamma and lambda are comparable."""
+    return 1.0 + gamma * abs(K_gt)
+
+
 def curvature_from_depth_K(depth, K, mode="mean", rel_thresh=0.05,
                            max_depth=None, normalize=True):
     """Dataset-AGNOSTIC core: full-res curvature (H,W) + validity (H,W) from a

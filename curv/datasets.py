@@ -14,6 +14,8 @@ Formats (verified):
                  <env>/<Easy|Hard>/P0xx/{image_left,depth_left}
   pointodyssey : depths/*.png 16-bit, meters = png/65535*1000; K = annot.npz
                  ['intrinsics'][idx]. <split>/<seq>/{rgbs,depths,annot.npz}
+  spring       : disp1_left/*.dsp5 (HDF5), depth = fx*0.065/disp; K from
+                 cam_data/intrinsics.txt. <split>/<seq>/{frame_left,disp1_left,cam_data}
 
 Paths are relative to the curv/ working dir.
 
@@ -28,17 +30,19 @@ from dataclasses import dataclass
 import numpy as np
 
 import sintel as SI
+import spring as SP
 
 # per-dataset roots (relative to curv/) and curvature-extraction params
 CFG = {
     "sintel": dict(root="../data", rel_thresh=0.05, max_depth=None),
     "tartanair": dict(root="../data/tartanair", rel_thresh=0.05, max_depth=200.0),
     "pointodyssey": dict(root="../data/pointodyssey", rel_thresh=0.05, max_depth=200.0),
+    "spring": dict(root="../data/spring", rel_thresh=0.05, max_depth=100.0),
 }
 TARTANAIR_K = np.array([[320.0, 0, 320.0], [0, 320.0, 240.0], [0, 0, 1.0]])
 
-# explicit Sintel val scenes; TartanAir uses a hash rule; PointOdyssey uses its
-# official train/ vs val/ split dirs.
+# explicit Sintel val scenes; TartanAir/Spring use a hash rule; PointOdyssey uses
+# its official train/ vs val/ split dirs.
 SINTEL_VAL = {"ambush_6", "cave_4", "market_5", "temple_3"}
 
 
@@ -127,8 +131,37 @@ def _pointodyssey_frames(split):
     return out
 
 
+def _spring_val_seqs(seqs):
+    """Hold out whole sequences (every 8th in sorted order, deterministic,
+    >=1 held out) -- Spring ships no official train/val split for training."""
+    return set(sorted(set(seqs))[::8])
+
+
+def _spring_frames(split):
+    root = CFG["spring"]["root"]
+    sub = "train"                                       # test split has no GT
+    seqs = sorted(os.path.basename(p) for p in
+                  glob.glob(os.path.join(root, sub, "*")) if os.path.isdir(p))
+    val_seqs = _spring_val_seqs(seqs)
+    want_val = split == "val"
+    out = []
+    for seq in seqs:
+        if (seq in val_seqs) != want_val:
+            continue
+        cam = os.path.join(root, sub, seq, "cam_data", "intrinsics.txt")
+        for rgb in SP.frame_paths(root, sub, seq):
+            idx = int("".join(filter(str.isdigit, os.path.basename(rgb)))[-4:])
+            disp = os.path.join(root, sub, seq, "disp1_left",
+                                f"disp1_left_{idx:04d}.dsp5")
+            if not os.path.exists(disp):                # disp missing -> skip
+                continue
+            out.append(Frame("spring", seq, idx, rgb, disp, cam,
+                             f"spring/{seq}/{idx:06d}"))
+    return out
+
+
 _ENUM = {"sintel": _sintel_frames, "tartanair": _tartanair_frames,
-         "pointodyssey": _pointodyssey_frames}
+         "pointodyssey": _pointodyssey_frames, "spring": _spring_frames}
 
 
 # ------------------------------- loading --------------------------------------
@@ -154,6 +187,12 @@ def load_depth_K(fr):
         depth = d16 / 65535.0 * 1000.0                  # -> meters (z-depth)
         K = np.load(fr.cam_path)["intrinsics"][fr.idx].astype(np.float64)
         return depth, K
+
+    if fr.dataset == "spring":
+        disp = SP.read_dsp5(fr.depth_path)[::2, ::2]    # 2x GT -> HD, no rescale
+        K = SP.read_intrinsics(fr.cam_path, fr.idx)
+        depth = SP.disp_to_depth(disp, float(K[0, 0]))  # sky (disp<=0) -> nan
+        return depth.astype(np.float32), K
 
     raise ValueError(f"unknown dataset {fr.dataset}")
 

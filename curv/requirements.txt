@@ -25,3 +25,4 @@ huggingface-hub[torch]>=0.22
 imageio          # curvature.py, sanity_curvature.py; dust3r.utils.image
 evo              # dust3r.utils.vo_eval (imported by cloud_opt.base_opt)
 scikit-image     # skimage, imported by dust3r
+h5py             # spring.py: read .dsp5 disparity (HDF5)

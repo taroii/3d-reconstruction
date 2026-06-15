@@ -25,7 +25,8 @@ Final layout (everything under one parent dir; **run from `curv/`**):
 ├── data/
 │   ├── training/{clean,depth,camdata_left,invalid,flow,occlusions}/<scene>/  # Sintel (EVAL ONLY)
 │   ├── tartanair/<env>/<Easy|Hard>/P0xx/{image_left,depth_left,pose_left.txt}/
-│   └── pointodyssey/{train,val}/<seq>/{rgbs,depths,annot.npz}
+│   ├── pointodyssey/{train,val}/<seq>/{rgbs,depths,annot.npz}
+│   └── spring/train/<seq>/{frame_left,disp1_left,cam_data}/
 ├── cache/                      # created at runtime (curvature-target cache)
 └── results/                    # created at runtime (logs/checkpoints)
 ```
@@ -95,8 +96,9 @@ eval tables.
 ## 5. Datasets
 
 Per frame curvature needs **GT z-depth + intrinsics** (poses too, for the full
-D²USt3R pair loss). Priorities follow `curv/PLAN.md`: **PointOdyssey and
-TartanAir are required**; Sintel is **eval-only** — never sampled for training.
+D²USt3R pair loss). Training mix follows `curv/PLAN.md`: **TartanAir +
+PointOdyssey + Spring** (3 of D²USt3R's 5 training datasets); Sintel is
+**eval-only** — never sampled for training.
 
 ### 5a. Sintel (small; eval + debugging)
 
@@ -146,6 +148,24 @@ cd ../..
 Loader facts: depth 16-bit PNG, meters = png/65535×1000 (z-depth); intrinsics
 from `annot.npz['intrinsics'][idx]`; official `train/` vs `val/` split.
 
+### 5d. Spring (small — ~6k frames, robustness/comprehensiveness)
+
+High-res synthetic stereo (https://spring-benchmark.org; data on DARUS
+https://darus.uni-stuttgart.de doi:10.18419/darus-3376). Download the **train**
+split (test has no GT) and extract to `data/spring/train/`:
+
+```bash
+# (download spring train archive from DARUS, then)
+mkdir -p data/spring && tar xf spring_train.tar -C data/spring   # -> data/spring/train/<seq>/
+```
+
+Loader facts (`curv/spring.py`): left camera only; disparity `.dsp5` is HDF5
+(key `disparity`), GT stored at 2× → subsampled `[::2,::2]` to 1920×1080 with NO
+value rescale; depth `Z = fx·B/d`, baseline **B = 0.065 m**; zero disparity = sky
+→ dropped; `K` from `cam_data/intrinsics.txt` (rows `fx fy cx cy`). Needs `h5py`
+(in `requirements.txt`). val = whole held-out sequences (every 8th, sorted).
+**Smoke-test the loader first:** `python sanity_curvature.py --dataset spring`.
+
 ---
 
 ## 6. Smoke tests + training — `curv/PLAN.md` Phases 0–2
@@ -154,11 +174,13 @@ Run from inside `curv/`.
 
 1. **Phase 0** (curvature correctness):
    `python sanity_curvature.py` — synthetic plane/bump/saddle sign checks.
-   `python sanity_curvature.py --dataset sintel --scene alley_1 --idx 1` —
-   dump a real curvature map (fires on edges, empty across depth cliffs).
+   `python sanity_curvature.py --dataset tartanair` (also `pointodyssey`,
+   `spring`) — dump a real curvature map (fires on edges, empty across cliffs).
+   This is also the per-dataset loader smoke-test.
 2. **Phase 1.5** (head learnability gate):
    `python train_curv.py --overfit` → loss/MAE should drop sharply.
-   `python train_curv.py --datasets tartanair --max-per-dataset 4000 --epochs 20`.
+   `python train_curv.py --datasets tartanair,pointodyssey,spring \
+       --max-per-dataset 4000 --epochs 20`.
 3. **Phase 1 / Phase 2** (the actual augmentation): integrate the curvature
    reweighting (Option 2) and/or `CurvatureHead` + `curvature_conf_loss`
    (Option 1) into the **DDUSt3R** pair-training loop, importing from `curv/`.
