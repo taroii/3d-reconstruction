@@ -8,9 +8,9 @@ DDUSt3R clone does not ship these modules, so the import fails. These stubs
 satisfy the import and raise loudly if flow/segmentation is ever switched on.
 
 Usage (after cloning DDUSt3R):
-    python mfc/server/install_stubs.py /path/to/DDUSt3R
+    python curv/server/install_stubs.py /path/to/DDUSt3R
     # or, from repo root with the default layout:
-    python mfc/server/install_stubs.py
+    python curv/server/install_stubs.py
 """
 import os
 import sys

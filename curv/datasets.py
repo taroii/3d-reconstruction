@@ -1,24 +1,25 @@
 """
-Multi-dataset frame sources for N_phi training (Sintel + TartanAir + PointOdyssey).
+Multi-dataset frame sources for curvature training (Sintel + TartanAir +
+PointOdyssey).
 
 Every dataset reduces to the SAME contract: a list of `Frame`s, and
-`load_depth_K(frame) -> (depth z-depth float32, K 3x3)`. GT normals come from the
-agnostic `normals.normals_on_grid_from_depth_K`, so the supervision convention is
-identical across datasets. Invalid/sky pixels are passed in as depth=nan and the
-core drops them.
+`load_depth_K(frame) -> (depth z-depth float32, K 3x3)`. GT curvature comes from
+the agnostic `curvature.curvature_on_grid_from_depth_K`, so the supervision
+convention is identical across datasets. Invalid/sky pixels are passed in as
+depth=nan and the core drops them.
 
 Formats (verified):
-  sintel       : depth .dpt, K from .cam, invalid/ png -> nan. (data/training/)
+  sintel       : depth .dpt, K from .cam, invalid/ png -> nan. (data/training/)  [EVAL ONLY]
   tartanair    : depth_left/*_left_depth.npy float32 meters, fixed K=[320,320,320,240].
                  <env>/<Easy|Hard>/P0xx/{image_left,depth_left}
   pointodyssey : depths/*.png 16-bit, meters = png/65535*1000; K = annot.npz
                  ['intrinsics'][idx]. <split>/<seq>/{rgbs,depths,annot.npz}
 
-Paths are relative to the mfc/ working dir.
+Paths are relative to the curv/ working dir.
 
 NOTE: only the Sintel path is testable locally; TartanAir/PointOdyssey loaders
 are written to the documented formats and must be smoke-tested on the server with
-`sanity_normals.py --dataset <name> ...` before a full run.
+`sanity_curvature.py --dataset <name> ...` before a full run.
 """
 import os
 import glob
@@ -28,7 +29,7 @@ import numpy as np
 
 import sintel as SI
 
-# per-dataset roots (relative to mfc/) and normal-extraction params
+# per-dataset roots (relative to curv/) and curvature-extraction params
 CFG = {
     "sintel": dict(root="../data", rel_thresh=0.05, max_depth=None),
     "tartanair": dict(root="../data/tartanair", rel_thresh=0.05, max_depth=200.0),
