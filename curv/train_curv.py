@@ -49,12 +49,13 @@ def cached_grid_curvature(fr, mode, compress):
 
 
 class CurvatureDataset(Dataset):
-    def __init__(self, frames, mode, compress):
+    def __init__(self, frames, mode, compress, scale=1.0):
         from dust3r.utils.image import load_images
         self._load = load_images
         self.frames = frames
         self.mode = mode
         self.compress = compress
+        self.scale = scale          # standardize target to ~unit variance
 
     def __len__(self):
         return len(self.frames)
@@ -65,7 +66,25 @@ class CurvatureDataset(Dataset):
         img = g["img"][0]
         ts = np.asarray(g["true_shape"][0])
         k_gt, valid = cached_grid_curvature(fr, self.mode, self.compress)
+        k_gt = k_gt / self.scale
         return img, ts, torch.from_numpy(k_gt), torch.from_numpy(valid), fr.dataset
+
+
+def estimate_target_scale(frames, mode, compress, k=200, seed=0):
+    """Std of the (valid) curvature targets over a sample -- used to standardize
+    the target to ~unit variance so the regression head gets O(1) gradients.
+    Targets are ~1e-4 raw, which strands Huber in its vanishing-gradient regime."""
+    fs = list(frames)
+    random.Random(seed).shuffle(fs)
+    vals = []
+    for fr in fs[:k]:
+        g, v = cached_grid_curvature(fr, mode, compress)
+        if v.any():
+            vals.append(g[v].astype(np.float32))
+    if not vals:
+        return 1.0
+    s = float(np.concatenate(vals).std())
+    return s if s > 1e-9 else 1.0
 
 
 def collate(batch):
@@ -98,8 +117,8 @@ class DatasetBatchSampler(Sampler):
         return sum((len(v) + self.bs - 1) // self.bs for v in self.buckets.values())
 
 
-def loader_for(frames, bs, shuffle, mode, compress):
-    return DataLoader(CurvatureDataset(frames, mode, compress), collate_fn=collate,
+def loader_for(frames, bs, shuffle, mode, compress, scale=1.0):
+    return DataLoader(CurvatureDataset(frames, mode, compress, scale), collate_fn=collate,
                       batch_sampler=DatasetBatchSampler(frames, bs, shuffle))
 
 
@@ -148,7 +167,9 @@ def main():
 
     if args.overfit:
         frames = DS.build_frames(["sintel"], "train")[:args.bs]   # any data with GT
-        loader = loader_for(frames, args.bs, False, args.mode, compress)
+        scale = estimate_target_scale(frames, args.mode, compress, k=args.bs)
+        print(f"target scale (std) = {scale:.5f}", flush=True)
+        loader = loader_for(frames, args.bs, False, args.mode, compress, scale)
         img, ts, kgt, valid, _ = next(iter(loader))
         img, ts, kgt, valid = img.to(dev), ts.to(dev), kgt.to(dev), valid.to(dev)
         net.train()
@@ -170,8 +191,11 @@ def main():
     print("building val frames...", flush=True)
     va = DS.build_frames(names, "val", args.max_per_dataset, args.seed)
     print(f"train {len(tr)}  val {len(va)}", flush=True)
-    tr_ld = loader_for(tr, args.bs, True, args.mode, compress)
-    va_ld = loader_for(va, args.bs, False, args.mode, compress)
+    scale = estimate_target_scale(tr, args.mode, compress)
+    print(f"target scale (std) = {scale:.5f}  -> standardizing target to ~unit var",
+          flush=True)
+    tr_ld = loader_for(tr, args.bs, True, args.mode, compress, scale)
+    va_ld = loader_for(va, args.bs, False, args.mode, compress, scale)
 
     sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, args.epochs, eta_min=1e-6)
     os.makedirs("checkpoints", exist_ok=True)
@@ -195,7 +219,7 @@ def main():
             torch.save({"head": net.dpt.state_dict(), "hooks": net.hooks,
                         "backbone": args.backbone, "datasets": names,
                         "mode": args.mode, "compress": compress,
-                        "val_mae": val_mae}, ckpt)
+                        "target_scale": scale, "val_mae": val_mae}, ckpt)
             flag = "  *saved"
         perstr = " ".join(f"{d}={m:.4f}" for d, m in sorted(per.items()))
         print(f"epoch {ep:2d}  train {run/max(npx,1):.4f}  val {val_mae:.4f} "

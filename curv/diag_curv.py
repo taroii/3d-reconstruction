@@ -47,6 +47,7 @@ def main():
     ck = torch.load(args.ckpt, map_location=dev)
     mode = ck.get("mode", "mean")
     compress = ck.get("compress", True)
+    tscale = ck.get("target_scale", 1.0)        # match training standardization
     bb = B.load_backbone(ck.get("backbone", "d2ust3r"))
     net = CurvatureHead(bb).to(dev)
     if ck.get("hooks"):
@@ -72,6 +73,7 @@ def main():
             pred, _ = net(img, ts)
         pred = pred[0].cpu().numpy()
         gt, valid = cached_grid_curvature(fr, mode, compress)
+        gt = gt / tscale                            # same space as the trained head
         v = valid & np.isfinite(pred)
         p, q = pred[v], gt[v]
         if p.size == 0:
