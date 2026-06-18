@@ -1,11 +1,16 @@
 """
-Install the flow-free RAFT/SAM2 import stubs into a DDUSt3R clone.
+Install import-satisfying stubs into a DDUSt3R clone (training-only path).
 
-The bundled optimizer (DDUSt3R/dust3r/cloud_opt/optimizer.py) hard-imports
-`load_RAFT` and `build_sam2_video_predictor` at module load, but never CALLS
-them as long as flow_loss_weight=0 (which is our default everywhere). A fresh
-DDUSt3R clone does not ship these modules, so the import fails. These stubs
-satisfy the import and raise loudly if flow/segmentation is ever switched on.
+Three transitive imports break a fresh clone but are never exercised by the
+finetune:
+  - the optimizer hard-imports `load_RAFT` / `build_sam2_video_predictor`
+    (flow/seg, only used when flow_loss_weight>0 -- we keep it 0);
+  - `dust3r.training` imports `pose_eval -> demo -> viz_demo ->
+    datasets_preprocess.sintel_get_dynamics.compute_optical_flow`, a
+    preprocessing/demo-viz module not shipped in the clone.
+These stubs satisfy the imports and raise loudly if actually called. Files that
+already exist are left untouched (so a real datasets_preprocess is never
+clobbered).
 
 Usage (after cloning DDUSt3R):
     python curv/server/install_stubs.py /path/to/DDUSt3R
@@ -38,11 +43,23 @@ def build_sam2_video_predictor(*args, **kwargs):
                        "segmentation-based mask refinement.")
 '''
 
+SINTEL_DYN = '''"""Stub: training does not use sintel dynamic-flow preprocessing / demo viz.
+Satisfies the transitive import dust3r.training -> pose_eval -> demo -> viz_demo.
+Raises if actually called."""
+
+
+def compute_optical_flow(*args, **kwargs):
+    raise RuntimeError("datasets_preprocess.sintel_get_dynamics is stubbed "
+                       "(demo / pose-eval viz only; not used in training).")
+'''
+
 FILES = {
     "third_party/__init__.py": "",
     "third_party/raft.py": RAFT,
     "sam2/__init__.py": "",
     "sam2/build_sam.py": SAM2,
+    "datasets_preprocess/__init__.py": "",
+    "datasets_preprocess/sintel_get_dynamics.py": SINTEL_DYN,
 }
 
 if not os.path.isdir(DD):
@@ -50,7 +67,10 @@ if not os.path.isdir(DD):
 
 for rel, content in FILES.items():
     p = os.path.join(DD, rel)
-    os.makedirs(os.path.dirname(p), exist_ok=True)
+    if os.path.exists(p):                       # never clobber a real module
+        print("exists, skip", os.path.normpath(p))
+        continue
+    os.makedirs(os.path.dirname(p) or ".", exist_ok=True)
     with open(p, "w") as f:
         f.write(content)
     print("wrote", os.path.normpath(p))
