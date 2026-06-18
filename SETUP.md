@@ -146,7 +146,8 @@ cd ../..
 ```
 
 Loader facts: depth 16-bit PNG, meters = png/65535×1000 (z-depth); intrinsics
-from `annot.npz['intrinsics'][idx]`; official `train/` vs `val/` split.
+from `anno.npz['intrinsics'][idx]` (note: PO names it `anno.npz`, not `annot.npz`;
+seqs without it are skipped); official `train/` vs `val/` split.
 
 ### 5d. Spring (small — ~6k frames, robustness/comprehensiveness)
 

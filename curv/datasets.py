@@ -116,7 +116,9 @@ def _pointodyssey_frames(split):
         if not os.path.isdir(seqdir):
             continue
         scene = os.path.basename(seqdir)
-        annot = os.path.join(seqdir, "annot.npz")
+        annot = os.path.join(seqdir, "anno.npz")        # PO names it anno.npz
+        if not os.path.exists(annot):                   # skip incomplete/stray seqs
+            continue
         rgbs = sorted(glob.glob(os.path.join(seqdir, "rgbs", "*.jpg")) +
                       glob.glob(os.path.join(seqdir, "rgbs", "*.png")))
         for rgb in rgbs:
@@ -165,6 +167,20 @@ _ENUM = {"sintel": _sintel_frames, "tartanair": _tartanair_frames,
 
 
 # ------------------------------- loading --------------------------------------
+_PO_INTR = {}                                           # anno.npz path -> (S,3,3)
+
+
+def _po_intrinsics(anno_path, idx):
+    """PointOdyssey per-frame K, cached per anno.npz (the file is ~200MB; reading
+    it once per sequence instead of once per frame is a big speedup)."""
+    arr = _PO_INTR.get(anno_path)
+    if arr is None:
+        arr = np.load(anno_path)["intrinsics"]
+        _PO_INTR[anno_path] = arr
+    i = idx if idx < len(arr) else len(arr) - 1
+    return arr[i].astype(np.float64)
+
+
 def load_depth_K(fr):
     """Return (depth HxW float32 z-depth, K 3x3). Invalid pixels -> nan."""
     if fr.dataset == "sintel":
@@ -185,7 +201,7 @@ def load_depth_K(fr):
         import imageio.v2 as imageio
         d16 = imageio.imread(fr.depth_path).astype(np.float32)
         depth = d16 / 65535.0 * 1000.0                  # -> meters (z-depth)
-        K = np.load(fr.cam_path)["intrinsics"][fr.idx].astype(np.float64)
+        K = _po_intrinsics(fr.cam_path, fr.idx)         # cached per anno.npz
         return depth, K
 
     if fr.dataset == "spring":
