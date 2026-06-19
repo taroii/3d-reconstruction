@@ -67,6 +67,11 @@ def main():
     model.eval()
     loader = get_data_loader(args.dataset, batch_size=args.bs, num_workers=4,
                              shuffle=False, drop_last=False)
+    # ResizedDataset ("N @ ...") needs set_epoch() to build its index mapping
+    for obj in (getattr(loader, "dataset", None), getattr(loader, "sampler", None),
+                getattr(loader, "batch_sampler", None)):
+        if obj is not None and hasattr(obj, "set_epoch"):
+            obj.set_epoch(0)
 
     agg = {}  # region -> [sum_absrel*n, sum_d1*n, n_px, n_frames]
 
