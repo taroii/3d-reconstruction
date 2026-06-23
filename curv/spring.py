@@ -58,3 +58,36 @@ def frame_paths(root, split, seq):
     """Sorted left-RGB frame paths for one Spring sequence."""
     d = os.path.join(root, split, seq, "frame_left")
     return sorted(glob.glob(os.path.join(d, "frame_left_*.png")))
+
+
+# --------------------------------------------------------------------------
+# Optical flow (for the L_cc / SDAP dynamic supervision). Spring ships dense GT
+# forward+backward flow for the left view as a SEPARATE download:
+#   <root>/<split>/<seq>/flow_FW_left/flow_FW_left_<NNNN>.flo5   (i -> i+1)
+#   <root>/<split>/<seq>/flow_BW_left/flow_BW_left_<NNNN>.flo5   (i -> i-1)
+# Like disparity, GT is rendered at 2x (4K). Unlike disparity (whose values the
+# Spring FAQ says already relate to HD), flow vectors are in 4K-PIXEL units, so
+# HD flow = flo5[::2, ::2] / 2.  <-- the /2 is the one unconfirmed assumption;
+# smoke-test on the server (warp frame i by HD flow -> should land on i+1).
+# --------------------------------------------------------------------------
+def read_flo5(path):
+    """Read a Spring .flo5 flow map (HDF5 key 'flow'), raw 2x array (H2,W2,2)."""
+    import h5py
+    with h5py.File(path, "r") as f:
+        key = "flow" if "flow" in f.keys() else list(f.keys())[0]
+        return np.asarray(f[key][()])
+
+
+def read_flow_hd(path, scale=0.5):
+    """HD optical flow (H,W,2), float32, from a .flo5: subsample [::2,::2] and
+    scale the vectors (4K-px -> HD-px) by `scale`. Channel 0 = x (col), 1 = y."""
+    flo = read_flo5(path)[::2, ::2]
+    return (flo.astype(np.float32) * scale)
+
+
+def flow_path(root, split, seq, idx, direction="FW"):
+    """Path to the forward ('FW') or backward ('BW') left flow for 1-based frame
+    `idx`. Returns None if absent (flow is a separate Spring download)."""
+    name = f"flow_{direction}_left"
+    p = os.path.join(root, split, seq, name, f"{name}_{idx:04d}.flo5")
+    return p if os.path.exists(p) else None
