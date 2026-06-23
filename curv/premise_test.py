@@ -68,6 +68,25 @@ def _spearman(x, y, rng, cap=3_000_000):
     return float((rx * ry).sum() / denom) if denom > 0 else float("nan")
 
 
+def _po_dynamic_mask(loc, dset, label, instance, H, W):
+    """PointOdyssey dynamic mask for one frame: foreground (non-zero) pixels of
+    masks/mask_<num>.png, nearest-resized to the (H,W) grid. PO native 960x540
+    has the grid's aspect ratio, so the loader does a pure resize (no crop) and
+    this aligns with the depth. Returns bool (H,W), or None if the file is absent."""
+    import re
+    import PIL.Image
+    import imageio.v2 as imageio
+    num = re.sub(r"\D", "", instance)                       # 'rgb_01508.jpg' -> '01508'
+    path = os.path.join(loc, dset, label, "masks", f"mask_{num}.png")
+    if not os.path.exists(path):
+        return None
+    m = imageio.imread(path)
+    fg = (m != 0).any(axis=-1) if m.ndim == 3 else (m != 0)
+    pil = PIL.Image.fromarray(fg.astype(np.uint8) * 255, mode="L").resize(
+        (W, H), PIL.Image.NEAREST)
+    return np.asarray(pil) > 127
+
+
 def _decile_table(S, r, d1, n_bins=10):
     """Bin pixels by deciles of S; return per-bin (S_lo, S_hi, n, mean_absrel,
     mean_delta1). Edges from the pooled S distribution."""
@@ -119,6 +138,14 @@ def main():
     n_frames = 0
     has_dyn = False
 
+    # PO carries no dynamic_mask in the view; locate its masks/ from the dataset
+    # string so the dynamic split is a REAL foreground/background segmentation.
+    import re as _re
+    _ml = _re.search(r"dataset_location=['\"]([^'\"]+)['\"]", args.dataset)
+    _md = _re.search(r"dset=['\"]([^'\"]+)['\"]", args.dataset)
+    po_loc = _ml.group(1) if _ml else None
+    po_dset = _md.group(1) if _md else None
+
     for batch in loader:
         with torch.no_grad():
             res = loss_of_one_batch(batch, model, None, dev,
@@ -130,6 +157,8 @@ def main():
         K = view1["camera_intrinsics"].float().cpu().numpy()
         dyn = (view1["dynamic_mask"].cpu().numpy().astype(bool)
                if "dynamic_mask" in view1 else None)
+        labels = view1.get("label", None)
+        instances = view1.get("instance", None)
 
         for b in range(pred_d.shape[0]):
             vd = valid[b] & (gt_d[b] > 0) & np.isfinite(pred_d[b])
@@ -153,9 +182,15 @@ def main():
             S_all.append(S.astype(np.float32))
             r_all.append(r.astype(np.float32))
             d1_all.append(d1)
-            if dyn is not None:
+            dynb = None
+            if po_loc is not None and labels is not None:
+                dynb = _po_dynamic_mask(po_loc, po_dset, labels[b], instances[b],
+                                        gt_d[b].shape[0], gt_d[b].shape[1])
+            if dynb is None and dyn is not None:
+                dynb = dyn[b]
+            if dynb is not None:
                 has_dyn = True
-                dyn_all.append(dyn[b][vk])
+                dyn_all.append(dynb[vk])
             else:
                 dyn_all.append(np.zeros(vk.sum(), bool))
             n_frames += 1
@@ -177,9 +212,10 @@ def main():
             return None, None
         rows = _decile_table(Sm, rm, dm)
         rho = _spearman(Sm, rm, rng)
-        valid_means = [row[3] for row in rows if np.isfinite(row[3])]
-        ratio = (rows[-1][3] / rows[0][3]) if (rows[0][3] and np.isfinite(rows[0][3])
-                                               and np.isfinite(rows[-1][3])) else float("nan")
+        # ratio over the lowest vs highest NON-EMPTY decile (curvature is zero-
+        # inflated, so the bottom decile can be empty -> would give nan)
+        finite = [row[3] for row in rows if row[2] > 0 and np.isfinite(row[3])]
+        ratio = (finite[-1] / finite[0]) if len(finite) >= 2 and finite[0] > 0 else float("nan")
         print(f"\n=== {name}  [{label}]  pixels={Sm.size:,}  frames~{n_frames} ===")
         print(f"{'decile':>6} {'S_lo':>7} {'S_hi':>7} {'n_px':>10} {'AbsRel':>8} {'delta1':>8}")
         for i, (lo, hi, n, a, dd) in enumerate(rows, 1):
@@ -189,8 +225,15 @@ def main():
         return rows, (rho, ratio)
 
     rows_all, stat_all = block("all valid", np.ones(S.size, bool))
-    rows_dyn, stat_dyn = (block("dynamic", dyn) if has_dyn and dyn.any()
-                          else (None, None))
+    rows_dyn, stat_dyn = None, None
+    if has_dyn:
+        frac = float(dyn.mean())
+        if frac > 0.99 or frac < 0.001:
+            print(f"\n[warn] dynamic mask degenerate (foreground frac={frac:.3f}) "
+                  f"-- not a meaningful subset, skipping dynamic curve.")
+        else:
+            print(f"\n[info] dynamic (foreground) fraction = {frac:.3f}")
+            rows_dyn, stat_dyn = block("dynamic", dyn)
 
     # --- CSV ---
     csv = f"premise_{name}{tag}.csv"
