@@ -34,7 +34,11 @@ for entry in "${FILES[@]}"; do
     echo "=== SKIP $name (already extracted) ==="; continue
   fi
   echo "=== DOWNLOAD $name (id $id) ==="
-  wget -c --content-disposition "$BASE/$id" -O "$name"
+  # curl, NOT wget: DaRUS 303-redirects to a presigned S3 URL whose AWS
+  # signature contains %2F-encoded slashes; wget re-decodes them on the
+  # follow-up GET and S3 returns 403. curl -L preserves the URL verbatim.
+  # -C - resumes (S3 honours Range); each retry re-fetches a fresh signed URL.
+  curl -L --fail --retry 5 --retry-delay 10 -C - -o "$name" "$BASE/$id"
   echo "=== UNZIP $name ==="
   unzip -q -o "$name" && rm -f "$name"
 done
