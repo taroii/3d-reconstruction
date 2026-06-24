@@ -102,9 +102,9 @@ def main():
                          "is the flow (.flo5) download present?")
     print(f"{len(pairs)} Spring pairs (stride {args.stride})")
 
-    # accumulators: [sum_inconsistency, n_pixels]
-    dyn = [0.0, 0]
-    stat = [0.0, 0]
+    # accumulators: [sum_inconsistency, n_pixels, sum_|kappa(X1)|]
+    dyn = [0.0, 0, 0.0]
+    stat = [0.0, 0, 0.0]
     dyn_frac = []
 
     for rgb_a, rgb_b, seq, idx_a, fw, bw in pairs:
@@ -159,18 +159,25 @@ def main():
         base = (Mocc < 0.5) & (inb > 0.5) & validg[:, None]
         dset = base & (Mdyn > 0.5)
         sset = base & (Mdyn < 0.5)
+        ak1 = k1.abs()
         if dset.sum() > 0:
             dyn[0] += float(incons[dset].sum()); dyn[1] += int(dset.sum())
+            dyn[2] += float(ak1[dset].sum())
         if sset.sum() > 0:
             stat[0] += float(incons[sset].sum()); stat[1] += int(sset.sum())
+            stat[2] += float(ak1[sset].sum())
         dyn_frac.append(float((Mdyn > 0.5).float().mean()))
 
-    d_mean = dyn[0] / max(dyn[1], 1)
-    s_mean = stat[0] / max(stat[1], 1)
-    print(f"\n{'region':9s} {'mean|kappa(X1)-warp kappa(X2)|':>32s} {'n_px':>14s}")
-    print(f"{'DYNAMIC':9s} {d_mean:32.5f} {dyn[1]:14,d}")
-    print(f"{'STATIC':9s} {s_mean:32.5f} {stat[1]:14,d}")
-    print(f"\nmean dynamic-mask fraction = {np.mean(dyn_frac):.3f}")
+    d_mean, d_k = dyn[0] / max(dyn[1], 1), dyn[2] / max(dyn[1], 1)
+    s_mean, s_k = stat[0] / max(stat[1], 1), stat[2] / max(stat[1], 1)
+    # relative = inconsistency as a fraction of the curvature signal itself
+    print(f"\n{'region':9s} {'mean|incons|':>13s} {'mean|kappa|':>12s} "
+          f"{'incons/kappa':>13s} {'n_px':>14s}")
+    print(f"{'DYNAMIC':9s} {d_mean:13.5f} {d_k:12.5f} "
+          f"{d_mean / max(d_k, 1e-9):13.3f} {dyn[1]:14,d}")
+    print(f"{'STATIC':9s} {s_mean:13.5f} {s_k:12.5f} "
+          f"{s_mean / max(s_k, 1e-9):13.3f} {stat[1]:14,d}")
+    print(f"\nmean dynamic-mask fraction = {np.mean(dyn_frac):.3f}  (stride {args.stride})")
     print(f"dynamic / static inconsistency ratio = {d_mean / max(s_mean, 1e-9):.2f}")
     print("\nSELF-CHECK: STATIC inconsistency should be ~0 (rigid agreement). If it")
     print("is NOT small relative to DYNAMIC, the Spring flow/pose conventions are off")
