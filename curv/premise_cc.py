@@ -117,10 +117,12 @@ def main():
             print(f"  skip {seq}/{idx_a}: inference failed ({e})")
             continue
 
-        X1 = out["pred1"]["pts3d"].float()                       # (1,H,W,3)
+        # 'complete' returns both directions; the forward (view0->view1) pair is
+        # index 0 -- that's the one our GT forward flow f corresponds to.
+        X1 = out["pred1"]["pts3d"][:1].float()                   # X_hat^{1,1}
         p2 = out["pred2"]
         X2 = (p2["pts3d_in_other_view"] if "pts3d_in_other_view" in p2
-              else p2["pts3d"]).float()                          # (1,H,W,3)
+              else p2["pts3d"])[:1].float()                      # X_hat^{2,1}
         H, W = X1.shape[1], X1.shape[2]
 
         # --- GT geometry for view 1, resized onto the (H,W) grid ---
