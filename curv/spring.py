@@ -44,6 +44,16 @@ def read_intrinsics(path, idx):
     return np.array([[fx, 0, cx], [0, fy, cy], [0, 0, 1.0]])
 
 
+def read_extrinsics(path, idx):
+    """4x4 extrinsic for 1-based frame `idx` from cam_data/extrinsics.txt (rows of
+    16 = flattened 4x4, row-major). ASSUMED world->camera; the relative pose and
+    premise_cc's static-consistency self-check will flag it if the convention is
+    flipped. A single row is treated as shared."""
+    arr = np.loadtxt(path)
+    row = arr if arr.ndim == 1 else (arr[idx - 1] if idx - 1 < len(arr) else arr[0])
+    return np.asarray(row[:16], dtype=np.float64).reshape(4, 4)
+
+
 def disp_to_depth(disp, fx, baseline=BASELINE):
     """Z-depth (H,W) from HD disparity (H,W) + fx. Non-positive disparity (sky)
     and non-finite values -> nan (dropped downstream)."""
