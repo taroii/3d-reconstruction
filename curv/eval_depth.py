@@ -46,6 +46,19 @@ def _metrics(pred, gt, mask):
     return absrel, d1, int(p.size)
 
 
+def _align(pred, gt, mask, mode):
+    """Align predicted depth to GT over `mask`. 'median' = scale-only (median
+    ratio); 'ssi' = least-squares scale AND shift, min_s,t ||s*pred+t-gt||^2,
+    which absorbs additive offset and is far less tail-sensitive than scale-only."""
+    p, g = pred[mask], gt[mask]
+    if mode == "ssi" and p.size >= 10:
+        A = np.stack([p, np.ones_like(p)], axis=1)
+        s, t = np.linalg.lstsq(A, g, rcond=None)[0]
+        return pred * s + t
+    s = np.median(g) / max(np.median(p), 1e-6)
+    return pred * s
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--ckpt", required=True)
@@ -53,6 +66,10 @@ def main():
     ap.add_argument("--bs", type=int, default=4)
     ap.add_argument("--bpct", type=float, default=90.0,
                     help="BOUNDARY = top (100-bpct)%% of pixels by |GT curvature|")
+    ap.add_argument("--align", choices=["median", "ssi"], default="median",
+                    help="depth alignment: median scale-only, or ssi scale+shift")
+    ap.add_argument("--cap", type=float, default=0.0,
+                    help="exclude GT depth > cap metres from metrics (0 = no cap)")
     args = ap.parse_args()
     dev = "cuda"
 
@@ -97,10 +114,14 @@ def main():
 
         for b in range(pred_d.shape[0]):
             vd = valid[b] & (gt_d[b] > 0) & np.isfinite(pred_d[b])
+            if args.cap > 0:
+                vd = vd & (gt_d[b] <= args.cap)
             if vd.sum() < 100:
                 continue
-            scale = np.median(gt_d[b][vd]) / max(np.median(pred_d[b][vd]), 1e-6)
-            pa = pred_d[b] * scale                                       # aligned pred depth
+            pa = _align(pred_d[b], gt_d[b], vd, args.align)              # aligned pred depth
+            vd = vd & (pa > 0)                                           # ssi shift can go <=0
+            if vd.sum() < 100:
+                continue
             add("ALL", _metrics(pa, gt_d[b], vd))
 
             # BOUNDARY = high |GT curvature| (computed from GT depth + K)
@@ -116,7 +137,8 @@ def main():
 
     name = args.dataset.split("@")[1].split("(")[0].strip()
     print(f"\nckpt    {args.ckpt}")
-    print(f"dataset {name}")
+    print(f"dataset {name}  (align={args.align}"
+          + (f", cap={args.cap:g}m" if args.cap > 0 else "") + ")")
     print(f"{'region':9s} {'AbsRel':>8s} {'delta1':>8s} {'frames':>7s}")
     for region in ("ALL", "BOUNDARY", "DYNAMIC"):
         if region in agg:
