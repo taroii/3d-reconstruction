@@ -38,12 +38,17 @@ for s in 0 1 2; do
   run "$(C 0.0)" "$s" "g0_s$s"      # baseline (gamma=0 == ConfLoss)
   run "$(C 1.0)" "$s" "g1_s$s"      # curvature
 done
-# --- Tier 2: gradient control (1st vs 2nd order), 2 seeds ---
-for s in 0 1; do
+# --- Tier 2: gradient control (1st vs 2nd order), 3 seeds (curvature-specificity) ---
+for s in 0 1 2; do
   run "$(G 1.0)" "$s" "grad_s$s"
 done
 # --- Tier 3: gamma sweep, single seed (inverted-U) ---
 run "$(C 0.5)" 0 "g0p5_s0"
 run "$(C 2.0)" 0 "g2_s0"
+# --- Tier 4: extra A/B seeds for tighter stats ---
+for s in 3 4; do
+  run "$(C 0.0)" "$s" "g0_s$s"
+  run "$(C 1.0)" "$s" "g1_s$s"
+done
 
 echo "ALL DONE"
