@@ -1,0 +1,856 @@
+############################################################
+# ../DDUSt3R/checkpoints/ddust3r.pth
+############################################################
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/model.py:29: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  ckpt = torch.load(model_path, map_location='cpu')
+Warning, cannot find cuda-compiled version of RoPE2D, using a slow pytorch version instead
+Freezing encoder parameters
+loading pointodyssey dataset...
+found 15 unique videos in ../data/pointodyssey (dset=val)
+loading trajectories...
+stride counts: {4: 17032}
+collected 17032 clips of length 2 in ../data/pointodyssey (dset=val)
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/inference.py:70: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=bool(use_amp)):
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/model.py:209: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/inference.py:74: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+
+ckpt    ../DDUSt3R/checkpoints/ddust3r.pth
+dataset PointOdysseyDUSt3R  (align=ssi)
+region      AbsRel   delta1  frames
+ALL         0.0770   0.9367     400
+BOUNDARY    0.0709   0.9464     400
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/model.py:29: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  ckpt = torch.load(model_path, map_location='cpu')
+Warning, cannot find cuda-compiled version of RoPE2D, using a slow pytorch version instead
+Freezing encoder parameters
+loading sintel dataset...
+found 23 unique videos in ../data/training (dset=clean)
+loading trajectories...
+stride counts: {7: 372}
+collected 372 clips of length 2 in ../data/training (dset=clean)
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/inference.py:70: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=bool(use_amp)):
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/model.py:209: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/inference.py:74: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+
+ckpt    ../DDUSt3R/checkpoints/ddust3r.pth
+dataset SintelDUSt3R  (align=ssi, cap=70m)
+region      AbsRel   delta1  frames
+ALL         0.3243   0.6744     296
+BOUNDARY    0.2202   0.6790     296
+############################################################
+# ../DDUSt3R/results/armA/checkpoint-best.pth
+############################################################
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/model.py:29: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  ckpt = torch.load(model_path, map_location='cpu')
+Warning, cannot find cuda-compiled version of RoPE2D, using a slow pytorch version instead
+Freezing encoder parameters
+loading pointodyssey dataset...
+found 15 unique videos in ../data/pointodyssey (dset=val)
+loading trajectories...
+stride counts: {4: 17032}
+collected 17032 clips of length 2 in ../data/pointodyssey (dset=val)
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/inference.py:70: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=bool(use_amp)):
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/model.py:209: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/inference.py:74: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+
+ckpt    ../DDUSt3R/results/armA/checkpoint-best.pth
+dataset PointOdysseyDUSt3R  (align=ssi)
+region      AbsRel   delta1  frames
+ALL         0.0844   0.9277     400
+BOUNDARY    0.0723   0.9464     400
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/model.py:29: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  ckpt = torch.load(model_path, map_location='cpu')
+Warning, cannot find cuda-compiled version of RoPE2D, using a slow pytorch version instead
+Freezing encoder parameters
+loading sintel dataset...
+found 23 unique videos in ../data/training (dset=clean)
+loading trajectories...
+stride counts: {7: 372}
+collected 372 clips of length 2 in ../data/training (dset=clean)
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/inference.py:70: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=bool(use_amp)):
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/model.py:209: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/inference.py:74: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+
+ckpt    ../DDUSt3R/results/armA/checkpoint-best.pth
+dataset SintelDUSt3R  (align=ssi, cap=70m)
+region      AbsRel   delta1  frames
+ALL         0.3615   0.6648     296
+BOUNDARY    0.2318   0.6959     296
+############################################################
+# ../DDUSt3R/results/armB_g1/checkpoint-best.pth
+############################################################
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/model.py:29: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  ckpt = torch.load(model_path, map_location='cpu')
+Warning, cannot find cuda-compiled version of RoPE2D, using a slow pytorch version instead
+Freezing encoder parameters
+loading pointodyssey dataset...
+found 15 unique videos in ../data/pointodyssey (dset=val)
+loading trajectories...
+stride counts: {4: 17032}
+collected 17032 clips of length 2 in ../data/pointodyssey (dset=val)
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/inference.py:70: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=bool(use_amp)):
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/model.py:209: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/inference.py:74: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+
+ckpt    ../DDUSt3R/results/armB_g1/checkpoint-best.pth
+dataset PointOdysseyDUSt3R  (align=ssi)
+region      AbsRel   delta1  frames
+ALL         0.0819   0.9295     400
+BOUNDARY    0.0694   0.9506     400
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/model.py:29: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  ckpt = torch.load(model_path, map_location='cpu')
+Warning, cannot find cuda-compiled version of RoPE2D, using a slow pytorch version instead
+Freezing encoder parameters
+loading sintel dataset...
+found 23 unique videos in ../data/training (dset=clean)
+loading trajectories...
+stride counts: {7: 372}
+collected 372 clips of length 2 in ../data/training (dset=clean)
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/inference.py:70: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=bool(use_amp)):
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/model.py:209: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/inference.py:74: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+
+ckpt    ../DDUSt3R/results/armB_g1/checkpoint-best.pth
+dataset SintelDUSt3R  (align=ssi, cap=70m)
+region      AbsRel   delta1  frames
+ALL         0.3542   0.6852     296
+BOUNDARY    0.2327   0.7079     296
+############################################################
+# ../DDUSt3R/results/armB_g4/checkpoint-best.pth
+############################################################
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/model.py:29: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  ckpt = torch.load(model_path, map_location='cpu')
+Warning, cannot find cuda-compiled version of RoPE2D, using a slow pytorch version instead
+Freezing encoder parameters
+loading pointodyssey dataset...
+found 15 unique videos in ../data/pointodyssey (dset=val)
+loading trajectories...
+stride counts: {4: 17032}
+collected 17032 clips of length 2 in ../data/pointodyssey (dset=val)
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/inference.py:70: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=bool(use_amp)):
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/model.py:209: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/inference.py:74: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+
+ckpt    ../DDUSt3R/results/armB_g4/checkpoint-best.pth
+dataset PointOdysseyDUSt3R  (align=ssi)
+region      AbsRel   delta1  frames
+ALL         0.0723   0.9411     400
+BOUNDARY    0.0631   0.9525     400
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/model.py:29: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  ckpt = torch.load(model_path, map_location='cpu')
+Warning, cannot find cuda-compiled version of RoPE2D, using a slow pytorch version instead
+Freezing encoder parameters
+loading sintel dataset...
+found 23 unique videos in ../data/training (dset=clean)
+loading trajectories...
+stride counts: {7: 372}
+collected 372 clips of length 2 in ../data/training (dset=clean)
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/inference.py:70: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=bool(use_amp)):
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/model.py:209: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/inference.py:74: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+
+ckpt    ../DDUSt3R/results/armB_g4/checkpoint-best.pth
+dataset SintelDUSt3R  (align=ssi, cap=70m)
+region      AbsRel   delta1  frames
+ALL         0.3741   0.6430     296
+BOUNDARY    0.2511   0.6692     296
+############################################################
+# ../DDUSt3R/results/g0p5_s0/checkpoint-best.pth
+############################################################
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/model.py:29: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  ckpt = torch.load(model_path, map_location='cpu')
+Warning, cannot find cuda-compiled version of RoPE2D, using a slow pytorch version instead
+Freezing encoder parameters
+loading pointodyssey dataset...
+found 15 unique videos in ../data/pointodyssey (dset=val)
+loading trajectories...
+stride counts: {4: 17032}
+collected 17032 clips of length 2 in ../data/pointodyssey (dset=val)
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/inference.py:70: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=bool(use_amp)):
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/model.py:209: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/inference.py:74: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+
+ckpt    ../DDUSt3R/results/g0p5_s0/checkpoint-best.pth
+dataset PointOdysseyDUSt3R  (align=ssi)
+region      AbsRel   delta1  frames
+ALL         0.0819   0.9293     400
+BOUNDARY    0.0705   0.9458     400
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/model.py:29: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  ckpt = torch.load(model_path, map_location='cpu')
+Warning, cannot find cuda-compiled version of RoPE2D, using a slow pytorch version instead
+Freezing encoder parameters
+loading sintel dataset...
+found 23 unique videos in ../data/training (dset=clean)
+loading trajectories...
+stride counts: {7: 372}
+collected 372 clips of length 2 in ../data/training (dset=clean)
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/inference.py:70: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=bool(use_amp)):
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/model.py:209: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/inference.py:74: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+
+ckpt    ../DDUSt3R/results/g0p5_s0/checkpoint-best.pth
+dataset SintelDUSt3R  (align=ssi, cap=70m)
+region      AbsRel   delta1  frames
+ALL         0.4986   0.5799     296
+BOUNDARY    0.2963   0.5950     296
+############################################################
+# ../DDUSt3R/results/g0_s0/checkpoint-best.pth
+############################################################
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/model.py:29: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  ckpt = torch.load(model_path, map_location='cpu')
+Warning, cannot find cuda-compiled version of RoPE2D, using a slow pytorch version instead
+Freezing encoder parameters
+loading pointodyssey dataset...
+found 15 unique videos in ../data/pointodyssey (dset=val)
+loading trajectories...
+stride counts: {4: 17032}
+collected 17032 clips of length 2 in ../data/pointodyssey (dset=val)
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/inference.py:70: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=bool(use_amp)):
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/model.py:209: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/inference.py:74: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+
+ckpt    ../DDUSt3R/results/g0_s0/checkpoint-best.pth
+dataset PointOdysseyDUSt3R  (align=ssi)
+region      AbsRel   delta1  frames
+ALL         0.0856   0.9256     400
+BOUNDARY    0.0743   0.9401     400
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/model.py:29: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  ckpt = torch.load(model_path, map_location='cpu')
+Warning, cannot find cuda-compiled version of RoPE2D, using a slow pytorch version instead
+Freezing encoder parameters
+loading sintel dataset...
+found 23 unique videos in ../data/training (dset=clean)
+loading trajectories...
+stride counts: {7: 372}
+collected 372 clips of length 2 in ../data/training (dset=clean)
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/inference.py:70: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=bool(use_amp)):
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/model.py:209: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/inference.py:74: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+
+ckpt    ../DDUSt3R/results/g0_s0/checkpoint-best.pth
+dataset SintelDUSt3R  (align=ssi, cap=70m)
+region      AbsRel   delta1  frames
+ALL         0.5242   0.5606     296
+BOUNDARY    0.3097   0.5752     296
+############################################################
+# ../DDUSt3R/results/g0_s1/checkpoint-best.pth
+############################################################
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/model.py:29: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  ckpt = torch.load(model_path, map_location='cpu')
+Warning, cannot find cuda-compiled version of RoPE2D, using a slow pytorch version instead
+Freezing encoder parameters
+loading pointodyssey dataset...
+found 15 unique videos in ../data/pointodyssey (dset=val)
+loading trajectories...
+stride counts: {4: 17032}
+collected 17032 clips of length 2 in ../data/pointodyssey (dset=val)
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/inference.py:70: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=bool(use_amp)):
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/model.py:209: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/inference.py:74: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+
+ckpt    ../DDUSt3R/results/g0_s1/checkpoint-best.pth
+dataset PointOdysseyDUSt3R  (align=ssi)
+region      AbsRel   delta1  frames
+ALL         0.0854   0.9215     400
+BOUNDARY    0.0720   0.9456     400
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/model.py:29: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  ckpt = torch.load(model_path, map_location='cpu')
+Warning, cannot find cuda-compiled version of RoPE2D, using a slow pytorch version instead
+Freezing encoder parameters
+loading sintel dataset...
+found 23 unique videos in ../data/training (dset=clean)
+loading trajectories...
+stride counts: {7: 372}
+collected 372 clips of length 2 in ../data/training (dset=clean)
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/inference.py:70: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=bool(use_amp)):
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/model.py:209: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/inference.py:74: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+
+ckpt    ../DDUSt3R/results/g0_s1/checkpoint-best.pth
+dataset SintelDUSt3R  (align=ssi, cap=70m)
+region      AbsRel   delta1  frames
+ALL         0.5006   0.5607     296
+BOUNDARY    0.3025   0.5695     296
+############################################################
+# ../DDUSt3R/results/g0_s2/checkpoint-best.pth
+############################################################
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/model.py:29: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  ckpt = torch.load(model_path, map_location='cpu')
+Warning, cannot find cuda-compiled version of RoPE2D, using a slow pytorch version instead
+Freezing encoder parameters
+loading pointodyssey dataset...
+found 15 unique videos in ../data/pointodyssey (dset=val)
+loading trajectories...
+stride counts: {4: 17032}
+collected 17032 clips of length 2 in ../data/pointodyssey (dset=val)
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/inference.py:70: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=bool(use_amp)):
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/model.py:209: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/inference.py:74: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+
+ckpt    ../DDUSt3R/results/g0_s2/checkpoint-best.pth
+dataset PointOdysseyDUSt3R  (align=ssi)
+region      AbsRel   delta1  frames
+ALL         0.0837   0.9289     400
+BOUNDARY    0.0736   0.9429     400
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/model.py:29: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  ckpt = torch.load(model_path, map_location='cpu')
+Warning, cannot find cuda-compiled version of RoPE2D, using a slow pytorch version instead
+Freezing encoder parameters
+loading sintel dataset...
+found 23 unique videos in ../data/training (dset=clean)
+loading trajectories...
+stride counts: {7: 372}
+collected 372 clips of length 2 in ../data/training (dset=clean)
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/inference.py:70: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=bool(use_amp)):
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/model.py:209: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/inference.py:74: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+
+ckpt    ../DDUSt3R/results/g0_s2/checkpoint-best.pth
+dataset SintelDUSt3R  (align=ssi, cap=70m)
+region      AbsRel   delta1  frames
+ALL         0.5153   0.5559     296
+BOUNDARY    0.3074   0.5619     296
+############################################################
+# ../DDUSt3R/results/g0_s3/checkpoint-best.pth
+############################################################
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/model.py:29: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  ckpt = torch.load(model_path, map_location='cpu')
+Warning, cannot find cuda-compiled version of RoPE2D, using a slow pytorch version instead
+Freezing encoder parameters
+loading pointodyssey dataset...
+found 15 unique videos in ../data/pointodyssey (dset=val)
+loading trajectories...
+stride counts: {4: 17032}
+collected 17032 clips of length 2 in ../data/pointodyssey (dset=val)
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/inference.py:70: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=bool(use_amp)):
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/model.py:209: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/inference.py:74: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+
+ckpt    ../DDUSt3R/results/g0_s3/checkpoint-best.pth
+dataset PointOdysseyDUSt3R  (align=ssi)
+region      AbsRel   delta1  frames
+ALL         0.0850   0.9286     400
+BOUNDARY    0.0724   0.9457     400
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/model.py:29: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  ckpt = torch.load(model_path, map_location='cpu')
+Warning, cannot find cuda-compiled version of RoPE2D, using a slow pytorch version instead
+Freezing encoder parameters
+loading sintel dataset...
+found 23 unique videos in ../data/training (dset=clean)
+loading trajectories...
+stride counts: {7: 372}
+collected 372 clips of length 2 in ../data/training (dset=clean)
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/inference.py:70: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=bool(use_amp)):
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/model.py:209: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/inference.py:74: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+
+ckpt    ../DDUSt3R/results/g0_s3/checkpoint-best.pth
+dataset SintelDUSt3R  (align=ssi, cap=70m)
+region      AbsRel   delta1  frames
+ALL         0.5073   0.5665     296
+BOUNDARY    0.3006   0.5713     296
+############################################################
+# ../DDUSt3R/results/g0_s4/checkpoint-best.pth
+############################################################
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/model.py:29: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  ckpt = torch.load(model_path, map_location='cpu')
+Warning, cannot find cuda-compiled version of RoPE2D, using a slow pytorch version instead
+Freezing encoder parameters
+loading pointodyssey dataset...
+found 15 unique videos in ../data/pointodyssey (dset=val)
+loading trajectories...
+stride counts: {4: 17032}
+collected 17032 clips of length 2 in ../data/pointodyssey (dset=val)
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/inference.py:70: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=bool(use_amp)):
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/model.py:209: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/inference.py:74: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+
+ckpt    ../DDUSt3R/results/g0_s4/checkpoint-best.pth
+dataset PointOdysseyDUSt3R  (align=ssi)
+region      AbsRel   delta1  frames
+ALL         0.0784   0.9382     400
+BOUNDARY    0.0677   0.9488     400
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/model.py:29: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  ckpt = torch.load(model_path, map_location='cpu')
+Warning, cannot find cuda-compiled version of RoPE2D, using a slow pytorch version instead
+Freezing encoder parameters
+loading sintel dataset...
+found 23 unique videos in ../data/training (dset=clean)
+loading trajectories...
+stride counts: {7: 372}
+collected 372 clips of length 2 in ../data/training (dset=clean)
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/inference.py:70: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=bool(use_amp)):
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/model.py:209: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/inference.py:74: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+
+ckpt    ../DDUSt3R/results/g0_s4/checkpoint-best.pth
+dataset SintelDUSt3R  (align=ssi, cap=70m)
+region      AbsRel   delta1  frames
+ALL         0.4641   0.5920     296
+BOUNDARY    0.2831   0.6161     296
+############################################################
+# ../DDUSt3R/results/g1_s0/checkpoint-best.pth
+############################################################
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/model.py:29: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  ckpt = torch.load(model_path, map_location='cpu')
+Warning, cannot find cuda-compiled version of RoPE2D, using a slow pytorch version instead
+Freezing encoder parameters
+loading pointodyssey dataset...
+found 15 unique videos in ../data/pointodyssey (dset=val)
+loading trajectories...
+stride counts: {4: 17032}
+collected 17032 clips of length 2 in ../data/pointodyssey (dset=val)
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/inference.py:70: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=bool(use_amp)):
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/model.py:209: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/inference.py:74: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+
+ckpt    ../DDUSt3R/results/g1_s0/checkpoint-best.pth
+dataset PointOdysseyDUSt3R  (align=ssi)
+region      AbsRel   delta1  frames
+ALL         0.0840   0.9238     400
+BOUNDARY    0.0717   0.9454     400
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/model.py:29: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  ckpt = torch.load(model_path, map_location='cpu')
+Warning, cannot find cuda-compiled version of RoPE2D, using a slow pytorch version instead
+Freezing encoder parameters
+loading sintel dataset...
+found 23 unique videos in ../data/training (dset=clean)
+loading trajectories...
+stride counts: {7: 372}
+collected 372 clips of length 2 in ../data/training (dset=clean)
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/inference.py:70: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=bool(use_amp)):
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/model.py:209: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/inference.py:74: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+
+ckpt    ../DDUSt3R/results/g1_s0/checkpoint-best.pth
+dataset SintelDUSt3R  (align=ssi, cap=70m)
+region      AbsRel   delta1  frames
+ALL         0.4794   0.5889     296
+BOUNDARY    0.2863   0.6003     296
+############################################################
+# ../DDUSt3R/results/g1_s1/checkpoint-best.pth
+############################################################
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/model.py:29: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  ckpt = torch.load(model_path, map_location='cpu')
+Warning, cannot find cuda-compiled version of RoPE2D, using a slow pytorch version instead
+Freezing encoder parameters
+loading pointodyssey dataset...
+found 15 unique videos in ../data/pointodyssey (dset=val)
+loading trajectories...
+stride counts: {4: 17032}
+collected 17032 clips of length 2 in ../data/pointodyssey (dset=val)
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/inference.py:70: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=bool(use_amp)):
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/model.py:209: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/inference.py:74: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+
+ckpt    ../DDUSt3R/results/g1_s1/checkpoint-best.pth
+dataset PointOdysseyDUSt3R  (align=ssi)
+region      AbsRel   delta1  frames
+ALL         0.0823   0.9285     400
+BOUNDARY    0.0700   0.9448     400
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/model.py:29: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  ckpt = torch.load(model_path, map_location='cpu')
+Warning, cannot find cuda-compiled version of RoPE2D, using a slow pytorch version instead
+Freezing encoder parameters
+loading sintel dataset...
+found 23 unique videos in ../data/training (dset=clean)
+loading trajectories...
+stride counts: {7: 372}
+collected 372 clips of length 2 in ../data/training (dset=clean)
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/inference.py:70: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=bool(use_amp)):
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/model.py:209: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/inference.py:74: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+
+ckpt    ../DDUSt3R/results/g1_s1/checkpoint-best.pth
+dataset SintelDUSt3R  (align=ssi, cap=70m)
+region      AbsRel   delta1  frames
+ALL         0.5044   0.5894     296
+BOUNDARY    0.2921   0.6049     296
+############################################################
+# ../DDUSt3R/results/g1_s2/checkpoint-best.pth
+############################################################
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/model.py:29: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  ckpt = torch.load(model_path, map_location='cpu')
+Warning, cannot find cuda-compiled version of RoPE2D, using a slow pytorch version instead
+Freezing encoder parameters
+loading pointodyssey dataset...
+found 15 unique videos in ../data/pointodyssey (dset=val)
+loading trajectories...
+stride counts: {4: 17032}
+collected 17032 clips of length 2 in ../data/pointodyssey (dset=val)
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/inference.py:70: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=bool(use_amp)):
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/model.py:209: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/inference.py:74: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+
+ckpt    ../DDUSt3R/results/g1_s2/checkpoint-best.pth
+dataset PointOdysseyDUSt3R  (align=ssi)
+region      AbsRel   delta1  frames
+ALL         0.0803   0.9329     400
+BOUNDARY    0.0694   0.9486     400
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/model.py:29: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  ckpt = torch.load(model_path, map_location='cpu')
+Warning, cannot find cuda-compiled version of RoPE2D, using a slow pytorch version instead
+Freezing encoder parameters
+loading sintel dataset...
+found 23 unique videos in ../data/training (dset=clean)
+loading trajectories...
+stride counts: {7: 372}
+collected 372 clips of length 2 in ../data/training (dset=clean)
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/inference.py:70: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=bool(use_amp)):
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/model.py:209: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/inference.py:74: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+
+ckpt    ../DDUSt3R/results/g1_s2/checkpoint-best.pth
+dataset SintelDUSt3R  (align=ssi, cap=70m)
+region      AbsRel   delta1  frames
+ALL         0.5029   0.5876     296
+BOUNDARY    0.2947   0.6037     296
+############################################################
+# ../DDUSt3R/results/g1_s3/checkpoint-best.pth
+############################################################
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/model.py:29: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  ckpt = torch.load(model_path, map_location='cpu')
+Warning, cannot find cuda-compiled version of RoPE2D, using a slow pytorch version instead
+Freezing encoder parameters
+loading pointodyssey dataset...
+found 15 unique videos in ../data/pointodyssey (dset=val)
+loading trajectories...
+stride counts: {4: 17032}
+collected 17032 clips of length 2 in ../data/pointodyssey (dset=val)
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/inference.py:70: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=bool(use_amp)):
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/model.py:209: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/inference.py:74: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+
+ckpt    ../DDUSt3R/results/g1_s3/checkpoint-best.pth
+dataset PointOdysseyDUSt3R  (align=ssi)
+region      AbsRel   delta1  frames
+ALL         0.0836   0.9260     400
+BOUNDARY    0.0709   0.9446     400
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/model.py:29: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  ckpt = torch.load(model_path, map_location='cpu')
+Warning, cannot find cuda-compiled version of RoPE2D, using a slow pytorch version instead
+Freezing encoder parameters
+loading sintel dataset...
+found 23 unique videos in ../data/training (dset=clean)
+loading trajectories...
+stride counts: {7: 372}
+collected 372 clips of length 2 in ../data/training (dset=clean)
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/inference.py:70: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=bool(use_amp)):
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/model.py:209: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/inference.py:74: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+
+ckpt    ../DDUSt3R/results/g1_s3/checkpoint-best.pth
+dataset SintelDUSt3R  (align=ssi, cap=70m)
+region      AbsRel   delta1  frames
+ALL         0.4753   0.5957     296
+BOUNDARY    0.2804   0.6135     296
+############################################################
+# ../DDUSt3R/results/g1_s4/checkpoint-best.pth
+############################################################
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/model.py:29: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  ckpt = torch.load(model_path, map_location='cpu')
+Warning, cannot find cuda-compiled version of RoPE2D, using a slow pytorch version instead
+Freezing encoder parameters
+loading pointodyssey dataset...
+found 15 unique videos in ../data/pointodyssey (dset=val)
+loading trajectories...
+stride counts: {4: 17032}
+collected 17032 clips of length 2 in ../data/pointodyssey (dset=val)
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/inference.py:70: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=bool(use_amp)):
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/model.py:209: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/inference.py:74: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+
+ckpt    ../DDUSt3R/results/g1_s4/checkpoint-best.pth
+dataset PointOdysseyDUSt3R  (align=ssi)
+region      AbsRel   delta1  frames
+ALL         0.0776   0.9349     400
+BOUNDARY    0.0660   0.9508     400
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/model.py:29: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  ckpt = torch.load(model_path, map_location='cpu')
+Warning, cannot find cuda-compiled version of RoPE2D, using a slow pytorch version instead
+Freezing encoder parameters
+loading sintel dataset...
+found 23 unique videos in ../data/training (dset=clean)
+loading trajectories...
+stride counts: {7: 372}
+collected 372 clips of length 2 in ../data/training (dset=clean)
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/inference.py:70: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=bool(use_amp)):
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/model.py:209: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/inference.py:74: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+
+ckpt    ../DDUSt3R/results/g1_s4/checkpoint-best.pth
+dataset SintelDUSt3R  (align=ssi, cap=70m)
+region      AbsRel   delta1  frames
+ALL         0.4342   0.6293     296
+BOUNDARY    0.2651   0.6550     296
+############################################################
+# ../DDUSt3R/results/g2_s0/checkpoint-best.pth
+############################################################
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/model.py:29: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  ckpt = torch.load(model_path, map_location='cpu')
+Warning, cannot find cuda-compiled version of RoPE2D, using a slow pytorch version instead
+Freezing encoder parameters
+loading pointodyssey dataset...
+found 15 unique videos in ../data/pointodyssey (dset=val)
+loading trajectories...
+stride counts: {4: 17032}
+collected 17032 clips of length 2 in ../data/pointodyssey (dset=val)
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/inference.py:70: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=bool(use_amp)):
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/model.py:209: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/inference.py:74: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+
+ckpt    ../DDUSt3R/results/g2_s0/checkpoint-best.pth
+dataset PointOdysseyDUSt3R  (align=ssi)
+region      AbsRel   delta1  frames
+ALL         0.0829   0.9304     400
+BOUNDARY    0.0697   0.9464     400
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/model.py:29: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  ckpt = torch.load(model_path, map_location='cpu')
+Warning, cannot find cuda-compiled version of RoPE2D, using a slow pytorch version instead
+Freezing encoder parameters
+loading sintel dataset...
+found 23 unique videos in ../data/training (dset=clean)
+loading trajectories...
+stride counts: {7: 372}
+collected 372 clips of length 2 in ../data/training (dset=clean)
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/inference.py:70: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=bool(use_amp)):
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/model.py:209: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/inference.py:74: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+
+ckpt    ../DDUSt3R/results/g2_s0/checkpoint-best.pth
+dataset SintelDUSt3R  (align=ssi, cap=70m)
+region      AbsRel   delta1  frames
+ALL         0.4015   0.6389     296
+BOUNDARY    0.2384   0.6680     296
+############################################################
+# ../DDUSt3R/results/grad_s0/checkpoint-best.pth
+############################################################
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/model.py:29: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  ckpt = torch.load(model_path, map_location='cpu')
+Warning, cannot find cuda-compiled version of RoPE2D, using a slow pytorch version instead
+Freezing encoder parameters
+loading pointodyssey dataset...
+found 15 unique videos in ../data/pointodyssey (dset=val)
+loading trajectories...
+stride counts: {4: 17032}
+collected 17032 clips of length 2 in ../data/pointodyssey (dset=val)
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/inference.py:70: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=bool(use_amp)):
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/model.py:209: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/inference.py:74: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+
+ckpt    ../DDUSt3R/results/grad_s0/checkpoint-best.pth
+dataset PointOdysseyDUSt3R  (align=ssi)
+region      AbsRel   delta1  frames
+ALL         0.0843   0.9254     400
+BOUNDARY    0.0704   0.9482     400
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/model.py:29: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  ckpt = torch.load(model_path, map_location='cpu')
+Warning, cannot find cuda-compiled version of RoPE2D, using a slow pytorch version instead
+Freezing encoder parameters
+loading sintel dataset...
+found 23 unique videos in ../data/training (dset=clean)
+loading trajectories...
+stride counts: {7: 372}
+collected 372 clips of length 2 in ../data/training (dset=clean)
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/inference.py:70: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=bool(use_amp)):
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/model.py:209: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/inference.py:74: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+
+ckpt    ../DDUSt3R/results/grad_s0/checkpoint-best.pth
+dataset SintelDUSt3R  (align=ssi, cap=70m)
+region      AbsRel   delta1  frames
+ALL         0.4943   0.5871     296
+BOUNDARY    0.2919   0.6068     296
+############################################################
+# ../DDUSt3R/results/grad_s1/checkpoint-best.pth
+############################################################
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/model.py:29: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  ckpt = torch.load(model_path, map_location='cpu')
+Warning, cannot find cuda-compiled version of RoPE2D, using a slow pytorch version instead
+Freezing encoder parameters
+loading pointodyssey dataset...
+found 15 unique videos in ../data/pointodyssey (dset=val)
+loading trajectories...
+stride counts: {4: 17032}
+collected 17032 clips of length 2 in ../data/pointodyssey (dset=val)
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/inference.py:70: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=bool(use_amp)):
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/model.py:209: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/inference.py:74: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+
+ckpt    ../DDUSt3R/results/grad_s1/checkpoint-best.pth
+dataset PointOdysseyDUSt3R  (align=ssi)
+region      AbsRel   delta1  frames
+ALL         0.0823   0.9316     400
+BOUNDARY    0.0699   0.9472     400
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/model.py:29: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  ckpt = torch.load(model_path, map_location='cpu')
+Warning, cannot find cuda-compiled version of RoPE2D, using a slow pytorch version instead
+Freezing encoder parameters
+loading sintel dataset...
+found 23 unique videos in ../data/training (dset=clean)
+loading trajectories...
+stride counts: {7: 372}
+collected 372 clips of length 2 in ../data/training (dset=clean)
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/inference.py:70: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=bool(use_amp)):
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/model.py:209: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/inference.py:74: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+
+ckpt    ../DDUSt3R/results/grad_s1/checkpoint-best.pth
+dataset SintelDUSt3R  (align=ssi, cap=70m)
+region      AbsRel   delta1  frames
+ALL         0.4722   0.6003     296
+BOUNDARY    0.2760   0.6221     296
+############################################################
+# ../DDUSt3R/results/grad_s2/checkpoint-best.pth
+############################################################
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/model.py:29: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  ckpt = torch.load(model_path, map_location='cpu')
+Warning, cannot find cuda-compiled version of RoPE2D, using a slow pytorch version instead
+Freezing encoder parameters
+loading pointodyssey dataset...
+found 15 unique videos in ../data/pointodyssey (dset=val)
+loading trajectories...
+stride counts: {4: 17032}
+collected 17032 clips of length 2 in ../data/pointodyssey (dset=val)
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/inference.py:70: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=bool(use_amp)):
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/model.py:209: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/inference.py:74: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+
+ckpt    ../DDUSt3R/results/grad_s2/checkpoint-best.pth
+dataset PointOdysseyDUSt3R  (align=ssi)
+region      AbsRel   delta1  frames
+ALL         0.0807   0.9332     400
+BOUNDARY    0.0696   0.9474     400
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/model.py:29: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  ckpt = torch.load(model_path, map_location='cpu')
+Warning, cannot find cuda-compiled version of RoPE2D, using a slow pytorch version instead
+Freezing encoder parameters
+loading sintel dataset...
+found 23 unique videos in ../data/training (dset=clean)
+loading trajectories...
+stride counts: {7: 372}
+collected 372 clips of length 2 in ../data/training (dset=clean)
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/inference.py:70: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=bool(use_amp)):
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/model.py:209: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+/home/bruinml/taro/3d-reconstruction/curv/../DDUSt3R/dust3r/inference.py:74: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+
+ckpt    ../DDUSt3R/results/grad_s2/checkpoint-best.pth
+dataset SintelDUSt3R  (align=ssi, cap=70m)
+region      AbsRel   delta1  frames
+ALL         0.4683   0.5918     296
+BOUNDARY    0.2839   0.6135     296
+EVAL DONE
