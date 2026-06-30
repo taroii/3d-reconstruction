@@ -33,22 +33,16 @@ run () {  # $1=train_criterion  $2=seed  $3=name
 C () { echo "CurvWeightedConfLoss(Regr3D(L21, norm_mode='avg_dis'), alpha=0.2, gamma=$1)"; }
 G () { echo "GradWeightedConfLoss(Regr3D(L21, norm_mode='avg_dis'), alpha=0.2, gamma=$1)"; }
 
-# --- Tier 1: matched A/B core, 3 seeds (priority) ---
-for s in 0 1 2; do
+# Even slate: every condition at five seeds. run() skips any run that already has
+# a checkpoint-best.pth, so a rerun only fills the gaps (currently grad s3-4,
+# g0p5 s1-4, g2 s1-4 = 10 runs, ~3-4 days). Seed-outer ordering finishes the
+# missing seeds of each condition together.
+for s in 0 1 2 3 4; do
   run "$(C 0.0)" "$s" "g0_s$s"      # baseline (gamma=0 == ConfLoss)
-  run "$(C 1.0)" "$s" "g1_s$s"      # curvature
-done
-# --- Tier 2: gradient control (1st vs 2nd order), 3 seeds (curvature-specificity) ---
-for s in 0 1 2; do
-  run "$(G 1.0)" "$s" "grad_s$s"
-done
-# --- Tier 3: gamma sweep, single seed (inverted-U) ---
-run "$(C 0.5)" 0 "g0p5_s0"
-run "$(C 2.0)" 0 "g2_s0"
-# --- Tier 4: extra A/B seeds for tighter stats ---
-for s in 3 4; do
-  run "$(C 0.0)" "$s" "g0_s$s"
-  run "$(C 1.0)" "$s" "g1_s$s"
+  run "$(C 1.0)" "$s" "g1_s$s"      # curvature (gamma=1)
+  run "$(G 1.0)" "$s" "grad_s$s"    # gradient control (1st-order)
+  run "$(C 0.5)" "$s" "g0p5_s$s"    # gamma=0.5
+  run "$(C 2.0)" "$s" "g2_s$s"      # gamma=2
 done
 
 echo "ALL DONE"
