@@ -57,8 +57,34 @@ def _relative_pose(E1, E2):
     return E2 @ np.linalg.inv(E1)
 
 
+def _load_rgb(path, H, W, dev):
+    import PIL.Image
+    im = PIL.Image.open(path).convert("RGB").resize((W, H), PIL.Image.BILINEAR)
+    return torch.from_numpy(np.array(im)).float().permute(2, 0, 1)[None].to(dev) / 255.0
+
+
+def _grid_flow(root, seq, frame, direction, H, W, s, dev):
+    """One consecutive Spring flow (FW: frame->frame+1, BW: frame->frame-1) resized
+    to the (H,W) grid and scaled by s. (1,2,H,W)."""
+    p = SP.flow_path(root, "train", seq, frame, direction)
+    return _to_grid(SP.read_flow_hd(p), H, W, "bilinear").to(dev) * s
+
+
+def _compose(flows):
+    """Compose consecutive flows f_{k->k+1} into f_{0->n}: warp each next flow by
+    the running composite and add. A single Spring flow spans ONE frame, so a
+    stride-n correspondence needs this chain. flows: list of (1,2,H,W)."""
+    comp = flows[0]
+    for nxt in flows[1:]:
+        w, _ = flow_warp(nxt, comp)
+        comp = comp + w
+    return comp
+
+
 def _spring_pairs(root, stride, max_pairs):
-    """List of (rgb_a, rgb_b, seq, idx_a) consecutive-frame pairs with GT flow."""
+    """(rgb_a, rgb_b, seq, idx_a) pairs `stride` frames apart, keeping only those
+    with every intermediate FW and BW flow present (needed to compose a correct
+    i->i+stride correspondence)."""
     pairs = []
     for seqdir in sorted(glob.glob(os.path.join(root, "train", "*"))):
         if not os.path.isdir(seqdir):
@@ -66,11 +92,11 @@ def _spring_pairs(root, stride, max_pairs):
         seq = os.path.basename(seqdir)
         rgbs = SP.frame_paths(root, "train", seq)
         for a in range(len(rgbs) - stride):
-            idx_a = int("".join(filter(str.isdigit, os.path.basename(rgbs[a])))[-4:])
-            fw = SP.flow_path(root, "train", seq, idx_a, "FW")
-            bw = SP.flow_path(root, "train", seq, idx_a + stride, "BW")
-            if fw and bw:
-                pairs.append((rgbs[a], rgbs[a + stride], seq, idx_a, fw, bw))
+            idx = int("".join(filter(str.isdigit, os.path.basename(rgbs[a])))[-4:])
+            fok = all(SP.flow_path(root, "train", seq, idx + k, "FW") for k in range(stride))
+            bok = all(SP.flow_path(root, "train", seq, idx + stride - k, "BW") for k in range(stride))
+            if fok and bok:
+                pairs.append((rgbs[a], rgbs[a + stride], seq, idx))
             if max_pairs and len(pairs) >= max_pairs:
                 return pairs
     return pairs
@@ -106,8 +132,10 @@ def main():
     dyn = [0.0, 0, 0.0]
     stat = [0.0, 0, 0.0]
     dyn_frac = []
+    rgbchk = [0.0, 0]   # warped-view2 vs view1 photometric error (flow self-check)
+    rgbbase = [0.0, 0]  # unwarped view2 vs view1
 
-    for rgb_a, rgb_b, seq, idx_a, fw, bw in pairs:
+    for rgb_a, rgb_b, seq, idx_a in pairs:
         try:
             imgs = load_images([rgb_a, rgb_b], size=512, verbose=False)
             mp = make_pairs(imgs, scene_graph="complete", prefilter=None,
@@ -144,8 +172,19 @@ def main():
         validg = torch.isfinite(depthg) & (depthg > 0)
         depthg = torch.nan_to_num(depthg, nan=0.0)
 
-        f = _to_grid(SP.read_flow_hd(fw), H, W, "bilinear").to(dev) * s   # (1,2,H,W)
-        b = _to_grid(SP.read_flow_hd(bw), H, W, "bilinear").to(dev) * s
+        # correct i->i+stride correspondence: compose the consecutive GT flows
+        f = _compose([_grid_flow(args.root, seq, idx_a + k, "FW", H, W, s, dev)
+                      for k in range(args.stride)])
+        b = _compose([_grid_flow(args.root, seq, idx_a + args.stride - k, "BW", H, W, s, dev)
+                      for k in range(args.stride)])
+
+        # flow self-check: warp view-2 RGB by f; a correctly scaled/directed flow
+        # reconstructs view-1, so warped error << unwarped baseline
+        rgb1, rgb2 = _load_rgb(rgb_a, H, W, dev), _load_rgb(rgb_b, H, W, dev)
+        r2w, rinb = flow_warp(rgb2, f)
+        rm = (rinb > 0.5).expand_as(rgb1)
+        rgbchk[0] += float((r2w[rm] - rgb1[rm]).abs().sum()); rgbchk[1] += int(rm.sum())
+        rgbbase[0] += float((rgb2[rm] - rgb1[rm]).abs().sum()); rgbbase[1] += int(rm.sum())
 
         f_cam = DY.cam_flow(depthg, Kg, Kg, T)
         Mdyn = DY.dynamic_mask(f_cam, f, tau=args.tau)            # (1,1,H,W)
@@ -179,10 +218,20 @@ def main():
           f"{s_mean / max(s_k, 1e-9):13.3f} {stat[1]:14,d}")
     print(f"\nmean dynamic-mask fraction = {np.mean(dyn_frac):.3f}  (stride {args.stride})")
     print(f"dynamic / static inconsistency ratio = {d_mean / max(s_mean, 1e-9):.2f}")
-    print("\nSELF-CHECK: STATIC inconsistency should be ~0 (rigid agreement). If it")
-    print("is NOT small relative to DYNAMIC, the Spring flow/pose conventions are off")
-    print("(flow /2 scale or world->cam extrinsic) -- fix before trusting the verdict.")
-    print("VERDICT for L_cc: dynamic >> static  => L_cc has real residual to remove.")
+
+    rc = rgbchk[0] / max(rgbchk[1], 1)
+    rb = rgbbase[0] / max(rgbbase[1], 1)
+    ok = rc < 0.7 * rb
+    print(f"\nFLOW SELF-CHECK (RGB warp): warped {rc:.4f} vs unwarped {rb:.4f}  "
+          f"-> {'flow aligns, numbers above are trustworthy' if ok else 'FLOW MIS-ALIGNED, DO NOT trust the numbers above'}")
+    if not ok:
+        print("  (the composed flow does not reconstruct view 1; check the read_flow_hd")
+        print("   scale or the FW/BW direction before drawing any L_cc conclusion.)")
+    else:
+        print("VERDICT for L_cc: only if dynamic >> static AND incons/kappa is small on")
+        print("dynamic pixels does L_cc have a clean residual to remove. Note curvature is")
+        print("only rigid-invariant, so genuine non-rigid deformation also shows up as")
+        print("dynamic inconsistency that L_cc cannot separate from prediction error.")
 
 
 if __name__ == "__main__":
