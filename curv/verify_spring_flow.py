@@ -39,15 +39,16 @@ import torch.nn.functional as F
 def _load_rgb(path, H, W):
     import PIL.Image
     im = PIL.Image.open(path).convert("RGB").resize((W, H), PIL.Image.BILINEAR)
-    return torch.from_numpy(np.asarray(im)).float().permute(2, 0, 1)[None] / 255.0
+    return torch.from_numpy(np.array(im)).float().permute(2, 0, 1)[None] / 255.0
 
 
-def _flow_to_grid(flo_hd, H, W):
-    """Resize an (H0,W0,2) HD flow to the (H,W) grid and scale the vectors by W/W0
-    (same as premise_cc). Returns (1,2,H,W)."""
-    t = torch.from_numpy(np.ascontiguousarray(flo_hd)).float().permute(2, 0, 1)[None]
-    W0 = flo_hd.shape[1]
-    return F.interpolate(t, size=(H, W), mode="bilinear", align_corners=False) * (W / W0)
+def _flow_to_grid(flo, H, W):
+    """Resize a raw (Hn,Wn,2) flo5 flow to the (H,W) grid (values still in native
+    pixels) and apply the resolution scale W/Wn to the vectors. Returns (1,2,H,W),
+    the u=1 reference flow. A remaining unit factor is swept separately."""
+    t = torch.from_numpy(np.ascontiguousarray(flo)).float().permute(2, 0, 1)[None]
+    Wn = flo.shape[1]
+    return F.interpolate(t, size=(H, W), mode="bilinear", align_corners=False) * (W / Wn)
 
 
 def _pairs(root, stride, n):
@@ -81,51 +82,76 @@ def main():
         raise SystemExit(f"no Spring FW-flow pairs under {args.root}/train")
     print(f"{len(pairs)} pairs (stride {args.stride})")
 
-    acc = {"baseline": [0.0, 0], "warp /2": [0.0, 0], "warp no-/2": [0.0, 0]}
+    US = [0.125, 0.25, 0.5, 1.0, 2.0, 4.0]     # extra unit factor on top of W/Wn
+    acc = {"baseline": [0.0, 0]}
+    for u in US:
+        acc[u] = [0.0, 0]
 
     def add(key, err, n):
         acc[key][0] += err * n; acc[key][1] += n
 
+    shape_printed = False
     for k, (p1, p2, fw) in enumerate(pairs):
         rgb1, rgb2 = _load_rgb(p1, H, W), _load_rgb(p2, H, W)
-        flo = SP.read_flo5(fw)[::2, ::2].astype(np.float32)      # HD (H0,W0,2), no scale yet
-        # whole-image baseline (no warp)
-        add("baseline", float((rgb1 - rgb2).abs().mean()), H * W)
-        for key, sc in (("warp /2", 0.5), ("warp no-/2", 1.0)):
-            f = _flow_to_grid(flo * sc, H, W)
-            warped, inb = flow_warp(rgb2, f)                     # view2 RGB -> view1 grid
-            m = inb.expand_as(warped) > 0.5
-            if m.any():
-                err = float((warped[m] - rgb1.expand_as(warped)[m]).abs().mean())
-                add(key, err, int(inb.sum()))
-            if args.save and k == 0:
-                _dump(rgb1, rgb2, warped, key, sc)
+        flo = SP.read_flo5(fw).astype(np.float32)               # RAW (Hn,Wn,2), no subsample
+        if not shape_printed:
+            print(f"raw .flo5 shape {flo.shape}  (grid {H}x{W}; resolution scale W/Wn = {W/flo.shape[1]:.4f})")
+            shape_printed = True
+        ref = _flow_to_grid(flo, H, W)                          # u=1 grid flow (1,2,H,W)
+        mag = ref.norm(dim=1, keepdim=True)                    # in grid pixels
+        hi = (mag > 3.0)                                        # high-flow pixels only
+        nhi = int(hi.sum())
+        if nhi < 500:
+            continue
+        rgb1e = rgb1.expand(1, 3, H, W)
+        hi3 = hi.expand(1, 3, H, W)
+        add("baseline", float((rgb1e[hi3] - rgb2.expand(1, 3, H, W)[hi3]).abs().mean()), nhi)
+        best_u, best_warp = None, None
+        for u in US:
+            warped, inb = flow_warp(rgb2, ref * u)
+            m = hi & (inb > 0.5)
+            if m.sum() < 100:
+                continue
+            m3 = m.expand(1, 3, H, W)
+            err = float((warped[m3] - rgb1e[m3]).abs().mean())
+            add(u, err, int(m.sum()))
+        if args.save and k == 0:
+            for u in US:
+                warped, _ = flow_warp(rgb2, ref * u)
+                _dump(rgb1, rgb2, warped, f"u{u}", u)
 
-    print(f"\n{'variant':12s} {'mean |RGB err|':>16s}")
-    for key in ("baseline", "warp /2", "warp no-/2"):
-        s, n = acc[key]
-        print(f"{key:12s} {s / max(n,1):16.4f}")
     b = acc["baseline"][0] / max(acc["baseline"][1], 1)
-    h = acc["warp /2"][0] / max(acc["warp /2"][1], 1)
-    fu = acc["warp no-/2"][0] / max(acc["warp no-/2"][1], 1)
-    print("\nReading:")
-    print(f"  warp /2 vs baseline:   {h:.4f} vs {b:.4f}  "
-          f"({'aligns' if h < 0.7*b else 'does NOT align'})")
-    print(f"  warp no-/2 vs baseline:{fu:.4f} vs {b:.4f}  "
-          f"({'aligns' if fu < 0.7*b else 'does NOT align'})")
-    best = min(("warp /2", h), ("warp no-/2", fu), key=lambda x: x[1])[0]
-    if min(h, fu) < 0.7 * b:
-        print(f"  => flow convention OK; best is '{best}'. If that is 'warp /2', "
-              f"premise_cc's scale is correct and its inconsistency numbers are real.")
+    print(f"\nHigh-flow-pixel RGB error (|flow| > 3 px):")
+    print(f"  {'unwarped baseline':22s} {b:8.4f}")
+    errs = {}
+    for u in US:
+        s, n = acc[u]
+        if n:
+            errs[u] = s / n
+            print(f"  warp, scale = (W/Wn)*{u:<6g} {errs[u]:8.4f}")
+    if not errs:
+        raise SystemExit("no high-flow pixels found; try --stride 8 or more pairs")
+    bu = min(errs, key=errs.get)
+    be = errs[bu]
+    print(f"\nBest scale factor u = {bu} (grid error {be:.4f} vs baseline {b:.4f}).")
+    if be < 0.6 * b:
+        note = "aligns" if abs(bu - 1.0) < 1e-6 else f"aligns, but at u={bu}, NOT u=1"
+        print(f"  => flow warps correctly at u={bu} ({note}).")
+        print(f"     premise_cc uses [::2,::2] then *0.5 then *(W/Wn_hd); express the winning")
+        print(f"     u as the equivalent read_flow_hd scale and set spring.read_flow_hd to it,")
+        print(f"     then rerun premise_cc for clean numbers.")
     else:
-        print("  => NEITHER warp aligns the images. The flow direction/scale is off; "
-              "premise_cc's inconsistency is a warp artifact and must be fixed before use.")
+        print("  => even the best scale barely beats the unwarped baseline. The forward-flow")
+        print("     warp does not reconstruct view 1, so the flow direction/units are off in a")
+        print("     way a single scale does not fix. premise_cc's numbers are not trustworthy;")
+        print("     do not rely on them in the paper until the flow loader is corrected.")
 
 
 def _dump(rgb1, rgb2, warped, key, sc):
     import PIL.Image
     def to_img(t):
-        return (t[0].clamp(0, 1).permute(1, 2, 0).numpy() * 255).astype(np.uint8)
+        a = torch.nan_to_num(t[0], nan=0.0).clamp(0, 1).permute(1, 2, 0).numpy()
+        return (a * 255).astype(np.uint8)
     diff = (rgb1 - warped).abs().clamp(0, 1)
     strip = np.concatenate([to_img(rgb1), to_img(rgb2), to_img(warped), to_img(diff)], axis=1)
     name = f"verify_flow_{key.replace(' ', '_').replace('/', '')}.png"
