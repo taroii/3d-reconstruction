@@ -75,10 +75,10 @@ def frame_paths(root, split, seq):
 # forward+backward flow for the left view as a SEPARATE download:
 #   <root>/<split>/<seq>/flow_FW_left/flow_FW_left_<NNNN>.flo5   (i -> i+1)
 #   <root>/<split>/<seq>/flow_BW_left/flow_BW_left_<NNNN>.flo5   (i -> i-1)
-# Like disparity, GT is rendered at 2x (4K). Unlike disparity (whose values the
-# Spring FAQ says already relate to HD), flow vectors are in 4K-PIXEL units, so
-# HD flow = flo5[::2, ::2] / 2.  <-- the /2 is the one unconfirmed assumption;
-# smoke-test on the server (warp frame i by HD flow -> should land on i+1).
+# Like disparity, GT is rendered at 2x (4K), and (VERIFIED via an RGB warp check,
+# verify_spring_flow.py) the flow VALUES already relate to the HD image, so HD
+# flow = flo5[::2, ::2] with NO value scaling. (An earlier /2 assumption was wrong:
+# warping view-2's RGB into view-1 minimized error at 2x that flow, i.e. scale=1.)
 # --------------------------------------------------------------------------
 def read_flo5(path):
     """Read a Spring .flo5 flow map (HDF5 key 'flow'), raw 2x array (H2,W2,2)."""
@@ -88,9 +88,10 @@ def read_flo5(path):
         return np.asarray(f[key][()])
 
 
-def read_flow_hd(path, scale=0.5):
-    """HD optical flow (H,W,2), float32, from a .flo5: subsample [::2,::2] and
-    scale the vectors (4K-px -> HD-px) by `scale`. Channel 0 = x (col), 1 = y."""
+def read_flow_hd(path, scale=1.0):
+    """HD optical flow (H,W,2), float32, from a .flo5: subsample [::2,::2]; the
+    values already relate to the HD image, so scale=1.0 (no rescale). Channel 0 =
+    x (col), 1 = y."""
     flo = read_flo5(path)[::2, ::2]
     return (flo.astype(np.float32) * scale)
 
