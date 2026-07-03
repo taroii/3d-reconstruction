@@ -34,6 +34,8 @@ def main():
     ap.add_argument("--scenes", default="",
                     help="comma-separated scene-name substrings to keep (e.g. "
                          "ambush_2,alley_1); empty = all scenes")
+    ap.add_argument("--no_title", action="store_true",
+                    help="omit the scene/frame suptitle (for paper figures)")
     ap.add_argument("--out", default="figs/error")
     args = ap.parse_args()
     os.makedirs(args.out, exist_ok=True)
@@ -86,7 +88,8 @@ def main():
         fig.colorbar(im, ax=ax[2], fraction=0.046, pad=0.04)
         for a in ax:
             a.axis("off")
-        fig.suptitle(f"{scene}/{frame}   boundary reduction {rb:+.4f}", fontsize=9)
+        if not args.no_title:
+            fig.suptitle(f"{scene}/{frame}   boundary reduction {rb:+.4f}", fontsize=9)
         base = os.path.join(args.out, f"err_{i:03d}_{scene}_{frame}_d{rb:+.4f}")
         fig.savefig(base + ".png", dpi=140, bbox_inches="tight")
         plt.close(fig)
