@@ -10,14 +10,14 @@ and pick the strongest and most diverse examples.
   cd curv
   python viz_pointmap.py --g0 ../DDUSt3R/results/g0_s0/checkpoint-best.pth \
                          --g1 ../DDUSt3R/results/g1_s0/checkpoint-best.pth \
-                         --dataset tartanair --recon --no_title --max_frames 200 --yaw 25
+                         --dataset tartanair --grid --no_title --max_frames 200 --yaw 25
 outputs figs/pointmap/pm_<scene>_<frame>_d{reduction}.png + figs/pointmap/ranking.csv
 Rerun with a different --yaw to get other viewpoints.
 
---dataset tartanair (static, dense GT) gives a clean reconstruction render; pair it
-with --recon (RGB, GT, gamma=1) since the two arms are visually identical in
-distribution. --dataset po also has dense GT and shows dynamics; Sintel marks moving
-objects invalid so its GT panel is holed there.
+--dataset tartanair (static, dense GT) gives a clean reconstruction render. --grid
+lays RGB, GT, gamma=0, and gamma=1 out as a 2x2 (larger panels); --recon drops the
+baseline for a three-panel RGB/GT/gamma=1 view. --dataset po also has dense GT and
+shows dynamics; Sintel marks moving objects invalid so its GT panel is holed there.
 """
 import os
 import argparse
@@ -43,6 +43,9 @@ def main():
                     help="three-panel reconstruction view (RGB, GT, gamma=1) instead "
                          "of the arm-vs-arm comparison; for in-distribution renders "
                          "where the two arms look identical")
+    ap.add_argument("--grid", action="store_true",
+                    help="2x2 layout of the four panels (RGB, GT, gamma=0, gamma=1) "
+                         "with larger panels")
     ap.add_argument("--no_title", action="store_true",
                     help="omit the scene/frame suptitle (for paper figures)")
     ap.add_argument("--max_frames", type=int, default=400)
@@ -75,6 +78,7 @@ def main():
         pm1 = np.isfinite(fr["preds"][1]).all(-1) & (fr["preds"][1][..., 2] > 0)
         gt_pts = CV.backproject(np.nan_to_num(gt, nan=0.0), K)
         r_gt = VC.render_points(gt_pts, rgb, vg, args.yaw, args.pitch)
+        r0 = VC.render_points(fr["preds"][0], rgb, pm0, args.yaw, args.pitch)
         r1 = VC.render_points(fr["preds"][1], rgb, pm1, args.yaw, args.pitch)
 
         if args.recon:
@@ -82,8 +86,15 @@ def main():
             ax[0].imshow(rgb);   ax[0].set_title("RGB")
             ax[1].imshow(r_gt);  ax[1].set_title("GT pointmap")
             ax[2].imshow(r1);    ax[2].set_title(r"$\gamma{=}1$ (ours)")
+        elif args.grid:
+            # 2x2: RGB and GT on top, the two arms on the bottom (larger panels)
+            fig, axg = plt.subplots(2, 2, figsize=(11, 7))
+            ax = axg.ravel()
+            ax[0].imshow(rgb);   ax[0].set_title("RGB")
+            ax[1].imshow(r_gt);  ax[1].set_title("GT pointmap")
+            ax[2].imshow(r0);    ax[2].set_title(r"$\gamma{=}0$ (baseline)")
+            ax[3].imshow(r1);    ax[3].set_title(r"$\gamma{=}1$ (ours)")
         else:
-            r0 = VC.render_points(fr["preds"][0], rgb, pm0, args.yaw, args.pitch)
             fig, ax = plt.subplots(1, 4, figsize=(15, 3.4))
             ax[0].imshow(rgb);   ax[0].set_title("RGB")
             ax[1].imshow(r_gt);  ax[1].set_title("GT pointmap")
