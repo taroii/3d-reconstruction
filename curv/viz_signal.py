@@ -26,6 +26,11 @@ def main():
     ap.add_argument("--n", type=int, default=12)
     ap.add_argument("--gamma", type=float, default=1.0)
     ap.add_argument("--tau", type=float, default=10.0)
+    ap.add_argument("--only", default="",
+                    help="render only frames whose key contains this substring "
+                         "(e.g. ambush_6_000001); empty = the sampled set")
+    ap.add_argument("--grid", action="store_true",
+                    help="lay the four panels out as a 2x2 grid (larger panels)")
     ap.add_argument("--out", default="figs/signal")
     args = ap.parse_args()
     os.makedirs(args.out, exist_ok=True)
@@ -33,8 +38,13 @@ def main():
     frames = DS.build_frames([args.dataset], args.split)
     if not frames:
         raise SystemExit(f"no {args.dataset}/{args.split} frames")
-    step = max(1, len(frames) // args.n)
-    picks = frames[::step][:args.n]
+    if args.only:
+        picks = [f for f in frames if args.only in f.key.replace("/", "_")]
+        if not picks:
+            raise SystemExit(f"no frame matching '{args.only}'")
+    else:
+        step = max(1, len(frames) // args.n)
+        picks = frames[::step][:args.n]
     cfg = DS.CFG[args.dataset]
 
     for fr in picks:
@@ -51,7 +61,11 @@ def main():
         rgb = imageio.imread(fr.rgb_path)
         d_show = np.where(np.isfinite(depth) & (depth > 0), depth, np.nan)
 
-        fig, ax = plt.subplots(1, 4, figsize=(16, 3.2), constrained_layout=True)
+        if args.grid:
+            fig, axg = plt.subplots(2, 2, figsize=(12, 7), constrained_layout=True)
+            ax = axg.ravel()                                 # [rgb, depth, |K|, weight]
+        else:
+            fig, ax = plt.subplots(1, 4, figsize=(16, 3.2), constrained_layout=True)
         ax[0].imshow(rgb);                                   ax[0].set_title("RGB")
         im1 = ax[1].imshow(d_show, cmap="turbo");            ax[1].set_title("GT depth")
         im2 = ax[2].imshow(np.where(valid, S, np.nan), cmap="magma",

@@ -36,6 +36,9 @@ def main():
                          "ambush_2,alley_1); empty = all scenes")
     ap.add_argument("--no_title", action="store_true",
                     help="omit the scene/frame suptitle (for paper figures)")
+    ap.add_argument("--grid", action="store_true",
+                    help="two-row layout (RGB and depth on top, difference below) "
+                         "with larger panels")
     ap.add_argument("--out", default="figs/error")
     args = ap.parse_args()
     os.makedirs(args.out, exist_ok=True)
@@ -75,7 +78,16 @@ def main():
         dhi = np.percentile(dv, 98) if dv.size else 1.0
         diff = e0 - e1                                       # >0 = curvature better
 
-        fig, ax = plt.subplots(1, 3, figsize=(12, 3.2), constrained_layout=True)
+        if args.grid:
+            # two rows: RGB and depth on top, the difference centered below,
+            # every panel at half width so the images are large
+            fig = plt.figure(figsize=(11, 7), constrained_layout=True)
+            gs = fig.add_gridspec(2, 4)
+            ax = [fig.add_subplot(gs[0, 0:2]),
+                  fig.add_subplot(gs[0, 2:4]),
+                  fig.add_subplot(gs[1, 1:3])]
+        else:
+            fig, ax = plt.subplots(1, 3, figsize=(12, 3.2), constrained_layout=True)
         ax[0].imshow(rgb)
         ax[0].set_title("RGB")
         dd = ax[1].imshow(dshow, cmap="turbo", vmin=dlo, vmax=dhi)
