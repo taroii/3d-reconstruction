@@ -57,7 +57,7 @@ def main():
         emax = max(np.percentile(e0[e0 > 0], 95) if (e0 > 0).any() else 1,
                    np.percentile(e1[e1 > 0], 95) if (e1 > 0).any() else 1)
         diff = e0 - e1
-        fig, ax = plt.subplots(1, 4, figsize=(16, 3.0))
+        fig, ax = plt.subplots(1, 4, figsize=(16, 3.0), constrained_layout=True)
         ax[0].imshow(rgb);                                            ax[0].set_title("RGB")
         ax[1].imshow(e0, cmap="inferno", vmin=0, vmax=emax);          ax[1].set_title(r"AbsRel $\gamma{=}0$")
         ax[2].imshow(e1, cmap="inferno", vmin=0, vmax=emax);          ax[2].set_title(r"AbsRel $\gamma{=}1$")
@@ -68,7 +68,6 @@ def main():
             a.axis("off")
         fig.colorbar(im, ax=ax[3], fraction=0.046, pad=0.04)
         fig.suptitle(f"{scene}/{frame}   boundary reduction {rb:+.4f}", fontsize=9)
-        fig.tight_layout()
         base = os.path.join(args.out, f"err_{i:03d}_{scene}_{frame}_d{rb:+.4f}")
         fig.savefig(base + ".png", dpi=140, bbox_inches="tight")
         plt.close(fig)

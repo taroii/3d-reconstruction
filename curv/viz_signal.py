@@ -51,7 +51,7 @@ def main():
         rgb = imageio.imread(fr.rgb_path)
         d_show = np.where(np.isfinite(depth) & (depth > 0), depth, np.nan)
 
-        fig, ax = plt.subplots(1, 4, figsize=(16, 3.2))
+        fig, ax = plt.subplots(1, 4, figsize=(16, 3.2), constrained_layout=True)
         ax[0].imshow(rgb);                                   ax[0].set_title("RGB")
         im1 = ax[1].imshow(d_show, cmap="turbo");            ax[1].set_title("GT depth")
         im2 = ax[2].imshow(np.where(valid, S, np.nan), cmap="magma",
@@ -64,7 +64,6 @@ def main():
             a.axis("off")
         for im, a in [(im1, ax[1]), (im2, ax[2]), (im3, ax[3])]:
             fig.colorbar(im, ax=a, fraction=0.046, pad=0.04)
-        fig.tight_layout()
         base = os.path.join(args.out, f"signal_{fr.key.replace('/', '_')}")
         fig.savefig(base + ".png", dpi=150, bbox_inches="tight")
         fig.savefig(base + ".pdf", bbox_inches="tight")
