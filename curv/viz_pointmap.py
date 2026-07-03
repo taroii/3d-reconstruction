@@ -10,12 +10,14 @@ and pick the strongest and most diverse examples.
   cd curv
   python viz_pointmap.py --g0 ../DDUSt3R/results/g0_s0/checkpoint-best.pth \
                          --g1 ../DDUSt3R/results/g1_s0/checkpoint-best.pth \
-                         --dataset po --max_frames 400 --yaw 25
+                         --dataset tartanair --recon --no_title --max_frames 200 --yaw 25
 outputs figs/pointmap/pm_<scene>_<frame>_d{reduction}.png + figs/pointmap/ranking.csv
 Rerun with a different --yaw to get other viewpoints.
 
-Use --dataset po (PointOdyssey, DENSE GT depth -> dynamic content renders) for the
-pointmap figure; Sintel marks moving objects invalid so its GT panel is holed there.
+--dataset tartanair (static, dense GT) gives a clean reconstruction render; pair it
+with --recon (RGB, GT, gamma=1) since the two arms are visually identical in
+distribution. --dataset po also has dense GT and shows dynamics; Sintel marks moving
+objects invalid so its GT panel is holed there.
 """
 import os
 import argparse
@@ -33,9 +35,16 @@ def main():
     ap.add_argument("--g0", default="../DDUSt3R/results/g0_s0/checkpoint-best.pth")
     ap.add_argument("--g1", default="../DDUSt3R/results/g1_s0/checkpoint-best.pth")
     ap.add_argument("--device", default="cuda")
-    ap.add_argument("--dataset", default="po", choices=["po", "sintel"],
+    ap.add_argument("--dataset", default="po", choices=["po", "sintel", "tartanair"],
                     help="po = PointOdyssey (dense GT, renders dynamics); "
-                         "sintel = zero-shot but GT invalid on moving objects")
+                         "sintel = zero-shot but GT invalid on moving objects; "
+                         "tartanair = static, dense GT, clean reconstruction render")
+    ap.add_argument("--recon", action="store_true",
+                    help="three-panel reconstruction view (RGB, GT, gamma=1) instead "
+                         "of the arm-vs-arm comparison; for in-distribution renders "
+                         "where the two arms look identical")
+    ap.add_argument("--no_title", action="store_true",
+                    help="omit the scene/frame suptitle (for paper figures)")
     ap.add_argument("--max_frames", type=int, default=400)
     ap.add_argument("--yaw", type=float, default=25.0)
     ap.add_argument("--pitch", type=float, default=12.0)
@@ -43,7 +52,8 @@ def main():
     args = ap.parse_args()
     os.makedirs(args.out, exist_ok=True)
 
-    dataset = VC.POINTODYSSEY if args.dataset == "po" else VC.SINTEL
+    dataset = {"po": VC.POINTODYSSEY, "sintel": VC.SINTEL,
+               "tartanair": VC.TARTANAIR}[args.dataset]
     models = VC.load_models([args.g0, args.g1], args.device)
     rank = []
     for fr in VC.frame_iter(dataset, models, args.device, args.max_frames):
@@ -65,18 +75,25 @@ def main():
         pm1 = np.isfinite(fr["preds"][1]).all(-1) & (fr["preds"][1][..., 2] > 0)
         gt_pts = CV.backproject(np.nan_to_num(gt, nan=0.0), K)
         r_gt = VC.render_points(gt_pts, rgb, vg, args.yaw, args.pitch)
-        r0 = VC.render_points(fr["preds"][0], rgb, pm0, args.yaw, args.pitch)
         r1 = VC.render_points(fr["preds"][1], rgb, pm1, args.yaw, args.pitch)
 
-        fig, ax = plt.subplots(1, 4, figsize=(15, 3.4))
-        ax[0].imshow(rgb);   ax[0].set_title("RGB")
-        ax[1].imshow(r_gt);  ax[1].set_title("GT pointmap")
-        ax[2].imshow(r0);    ax[2].set_title(r"$\gamma{=}0$ (baseline)")
-        ax[3].imshow(r1);    ax[3].set_title(r"$\gamma{=}1$ (ours)")
+        if args.recon:
+            fig, ax = plt.subplots(1, 3, figsize=(12, 3.6))
+            ax[0].imshow(rgb);   ax[0].set_title("RGB")
+            ax[1].imshow(r_gt);  ax[1].set_title("GT pointmap")
+            ax[2].imshow(r1);    ax[2].set_title(r"$\gamma{=}1$ (ours)")
+        else:
+            r0 = VC.render_points(fr["preds"][0], rgb, pm0, args.yaw, args.pitch)
+            fig, ax = plt.subplots(1, 4, figsize=(15, 3.4))
+            ax[0].imshow(rgb);   ax[0].set_title("RGB")
+            ax[1].imshow(r_gt);  ax[1].set_title("GT pointmap")
+            ax[2].imshow(r0);    ax[2].set_title(r"$\gamma{=}0$ (baseline)")
+            ax[3].imshow(r1);    ax[3].set_title(r"$\gamma{=}1$ (ours)")
         for a in ax:
             a.axis("off")
-        fig.suptitle(f"{fr['scene']}/{fr['frame']}   boundary reduction {red:+.4f}  "
-                     f"(yaw {args.yaw:g})", fontsize=9)
+        if not args.no_title:
+            fig.suptitle(f"{fr['scene']}/{fr['frame']}   boundary reduction {red:+.4f}  "
+                         f"(yaw {args.yaw:g})", fontsize=9)
         fig.tight_layout()
         base = os.path.join(args.out, f"pm_{fr['scene']}_{fr['frame']}_d{red:+.4f}")
         fig.savefig(base + ".png", dpi=140, bbox_inches="tight")

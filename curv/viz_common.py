@@ -28,6 +28,13 @@ SINTEL = ("400 @ SintelDUSt3R(dataset_location='../data/training', dset='clean',
 POINTODYSSEY = ("400 @ PointOdysseyDUSt3R(dset='val', dataset_location='../data/pointodyssey', "
                 "S=2, strides=[4], resolution=(512,288))")
 
+# TartanAir is static with dense GT depth: no invalid-on-moving-object holes, so
+# GT and predicted pointmaps both render fully. Use it for a clean qualitative
+# reconstruction render (in-distribution: the arms look identical, so show the
+# reconstruction, not an arm-vs-arm comparison).
+TARTANAIR = ("300 @ TarTanAirDUSt3R(dset='Easy', dataset_location='../data/tartanair', "
+             "S=2, strides=[8], resolution=(512,288))")
+
 
 def load_models(paths, dev):
     from dust3r.model import load_model
