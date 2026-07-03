@@ -10,9 +10,12 @@ and pick the strongest and most diverse examples.
   cd curv
   python viz_pointmap.py --g0 ../DDUSt3R/results/g0_s0/checkpoint-best.pth \
                          --g1 ../DDUSt3R/results/g1_s0/checkpoint-best.pth \
-                         --max_frames 400 --yaw 25
+                         --dataset po --max_frames 400 --yaw 25
 outputs figs/pointmap/pm_<scene>_<frame>_d{reduction}.png + figs/pointmap/ranking.csv
 Rerun with a different --yaw to get other viewpoints.
+
+Use --dataset po (PointOdyssey, DENSE GT depth -> dynamic content renders) for the
+pointmap figure; Sintel marks moving objects invalid so its GT panel is holed there.
 """
 import os
 import argparse
@@ -30,6 +33,9 @@ def main():
     ap.add_argument("--g0", default="../DDUSt3R/results/g0_s0/checkpoint-best.pth")
     ap.add_argument("--g1", default="../DDUSt3R/results/g1_s0/checkpoint-best.pth")
     ap.add_argument("--device", default="cuda")
+    ap.add_argument("--dataset", default="po", choices=["po", "sintel"],
+                    help="po = PointOdyssey (dense GT, renders dynamics); "
+                         "sintel = zero-shot but GT invalid on moving objects")
     ap.add_argument("--max_frames", type=int, default=400)
     ap.add_argument("--yaw", type=float, default=25.0)
     ap.add_argument("--pitch", type=float, default=12.0)
@@ -37,9 +43,10 @@ def main():
     args = ap.parse_args()
     os.makedirs(args.out, exist_ok=True)
 
+    dataset = VC.POINTODYSSEY if args.dataset == "po" else VC.SINTEL
     models = VC.load_models([args.g0, args.g1], args.device)
     rank = []
-    for fr in VC.frame_iter(VC.SINTEL, models, args.device, args.max_frames):
+    for fr in VC.frame_iter(dataset, models, args.device, args.max_frames):
         rgb, gt, valid, K = fr["rgb"], fr["gt"], fr["valid"], fr["K"]
         vg = valid & (gt > 0)
 

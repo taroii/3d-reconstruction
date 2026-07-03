@@ -16,9 +16,17 @@ if _DD not in sys.path:
 
 import curvature as CV
 
-# Sintel is the zero-shot regime where the effect is real; render there.
+# Sintel is the zero-shot regime where the boundary effect is real; use it for the
+# error maps (Figure C). Its GT depth is INVALID on moving objects, so it cannot
+# render dynamic content in a pointmap.
 SINTEL = ("400 @ SintelDUSt3R(dataset_location='../data/training', dset='clean', "
           "S=2, strides=[7], resolution=(512,224), load_dynamic_mask=False)")
+
+# PointOdyssey val has DENSE GT depth including moving objects, so the pointmap
+# renders actually show the dynamic content (in-distribution: qualitative, not a
+# boundary-error win).
+POINTODYSSEY = ("400 @ PointOdysseyDUSt3R(dset='val', dataset_location='../data/pointodyssey', "
+                "S=2, strides=[4], resolution=(512,288))")
 
 
 def load_models(paths, dev):
