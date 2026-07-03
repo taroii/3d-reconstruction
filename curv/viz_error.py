@@ -82,7 +82,7 @@ def main():
         # RdBu: positive (curvature better) -> blue, matching the caption
         im = ax[2].imshow(diff, cmap="RdBu", vmin=-vmax, vmax=vmax)
         ax[2].contour(bnd.astype(float), levels=[0.5], colors="k", linewidths=0.35)
-        ax[2].set_title(r"AbsRel reduction $\gamma{=}0-\gamma{=}1$")
+        ax[2].set_title(r"$\mathrm{AbsRel}_{\gamma=0}-\mathrm{AbsRel}_{\gamma=1}$")
         fig.colorbar(im, ax=ax[2], fraction=0.046, pad=0.04)
         for a in ax:
             a.axis("off")
