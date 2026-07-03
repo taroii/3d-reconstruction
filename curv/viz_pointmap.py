@@ -51,10 +51,15 @@ def main():
         e1, _, _ = VC.abs_rel(d1, gt, valid)
         red = float(e0[bnd].mean() - e1[bnd].mean()) if bnd.sum() > 50 else 0.0
 
+        # render the FULL predicted pointmap (all finite, positive-depth points),
+        # not the GT valid set: the model predicts moving objects densely, and
+        # Sintel marks those pixels invalid, so restricting to GT-valid drops them.
+        pm0 = np.isfinite(fr["preds"][0]).all(-1) & (fr["preds"][0][..., 2] > 0)
+        pm1 = np.isfinite(fr["preds"][1]).all(-1) & (fr["preds"][1][..., 2] > 0)
         gt_pts = CV.backproject(np.nan_to_num(gt, nan=0.0), K)
         r_gt = VC.render_points(gt_pts, rgb, vg, args.yaw, args.pitch)
-        r0 = VC.render_points(fr["preds"][0], rgb, valid, args.yaw, args.pitch)
-        r1 = VC.render_points(fr["preds"][1], rgb, valid, args.yaw, args.pitch)
+        r0 = VC.render_points(fr["preds"][0], rgb, pm0, args.yaw, args.pitch)
+        r1 = VC.render_points(fr["preds"][1], rgb, pm1, args.yaw, args.pitch)
 
         fig, ax = plt.subplots(1, 4, figsize=(15, 3.4))
         ax[0].imshow(rgb);   ax[0].set_title("RGB")

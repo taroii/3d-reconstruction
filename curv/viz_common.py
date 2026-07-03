@@ -120,7 +120,7 @@ def render_points(pts, rgb, valid, yaw=25.0, pitch=12.0, out=420, radius=1,
     span = max(hi - lo, 1e-6)
     m = int(out * 0.06)
     u = ((x - lo) / span * (out - 2 * m) + m).astype(int)
-    v = (out - 1 - ((y - lo) / span * (out - 2 * m) + m)).astype(int)
+    v = ((y - lo) / span * (out - 2 * m) + m).astype(int)   # Y is down (OpenCV), no flip
     inb = (u >= 0) & (u < out) & (v >= 0) & (v < out)
     u, v, z, C = u[inb], v[inb], z[inb], C[inb]
     order = np.argsort(-z if flip else z)          # far first, near painted last

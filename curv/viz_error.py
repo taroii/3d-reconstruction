@@ -27,6 +27,9 @@ def main():
     ap.add_argument("--g1", default="../DDUSt3R/results/g1_s0/checkpoint-best.pth")
     ap.add_argument("--device", default="cuda")
     ap.add_argument("--max_frames", type=int, default=300)
+    ap.add_argument("--top_k", type=int, default=40,
+                    help="save only the top-K figures by boundary reduction (0 = all); "
+                         "ranking.csv always lists every frame")
     ap.add_argument("--out", default="figs/error")
     args = ap.parse_args()
     os.makedirs(args.out, exist_ok=True)
@@ -53,7 +56,8 @@ def main():
             f.write(f"{i},{r[2]},{r[3]},{r[0]:.5f},{r[1]:.5f}\n")
 
     vmax = np.percentile([np.abs(r[0]) for r in rows], 90) if rows else 0.1
-    for i, (rb, ra, scene, frame, rgb, e0, e1, bnd) in enumerate(rows):
+    save = rows[:args.top_k] if args.top_k else rows
+    for i, (rb, ra, scene, frame, rgb, e0, e1, bnd) in enumerate(save):
         emax = max(np.percentile(e0[e0 > 0], 95) if (e0 > 0).any() else 1,
                    np.percentile(e1[e1 > 0], 95) if (e1 > 0).any() else 1)
         diff = e0 - e1
@@ -71,7 +75,8 @@ def main():
         base = os.path.join(args.out, f"err_{i:03d}_{scene}_{frame}_d{rb:+.4f}")
         fig.savefig(base + ".png", dpi=140, bbox_inches="tight")
         plt.close(fig)
-    print(f"wrote {len(rows)} error figures + ranking.csv to {args.out}")
+    print(f"ranked {len(rows)} frames (ranking.csv); saved top {len(save)} error figures "
+          f"(err_000 = biggest boundary win) to {args.out}")
 
 
 if __name__ == "__main__":
