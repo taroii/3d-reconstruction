@@ -97,7 +97,7 @@ def main():
         im = ax[2].imshow(diff, cmap="RdBu", vmin=-vmax, vmax=vmax)
         ax[2].contour(bnd.astype(float), levels=[0.5], colors="k", linewidths=0.35)
         ax[2].set_title(r"$\mathrm{AbsRel}_{\gamma=0}-\mathrm{AbsRel}_{\gamma=1}$")
-        fig.colorbar(im, ax=ax[2], fraction=0.046, pad=0.04, label="AbsRel reduction")
+        fig.colorbar(im, ax=ax[2], fraction=0.046, pad=0.04, label="difference")
         for a in ax:
             a.axis("off")
         if not args.no_title:

@@ -76,10 +76,8 @@ def main():
         ax[3].set_title(r"weight $w_i = 1+\gamma\,\min(|K_i|/\bar S,\tau)$")
         for a in ax:
             a.axis("off")
-        for im, a, lab in [(im1, ax[1], "depth"),
-                           (im2, ax[2], r"curvature $|K_i|$"),
-                           (im3, ax[3], r"weight $w_i$")]:
-            fig.colorbar(im, ax=a, fraction=0.046, pad=0.04, label=lab)
+        for im, a in [(im1, ax[1]), (im2, ax[2]), (im3, ax[3])]:
+            fig.colorbar(im, ax=a, fraction=0.046, pad=0.04)
         base = os.path.join(args.out, f"signal_{fr.key.replace('/', '_')}")
         fig.savefig(base + ".png", dpi=150, bbox_inches="tight")
         fig.savefig(base + ".pdf", bbox_inches="tight")
