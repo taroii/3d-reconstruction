@@ -1,25 +1,10 @@
+__pycache__/
+*.pyc
 .vscode/
-**/__pycache__/
-notes/
-notes/*
+.DS_Store
+
+# datasets live on the server and are reached through here by symlink
 data/
-# real-data phase: heavy / generated, never commit
-DDUSt3R/checkpoints/
-cache/
+
+# everything the pipeline produces (prediction cache, tables, figures)
 results/
-archive/
-*.pth
-*.zip
-# cloned third-party repos (not part of this project's source)
-DDUSt3R/
-mast3r/
-# latex build artifacts
-*.aux
-*.bbl
-*.blg
-*.out
-*.log
-*.synctex.gz
-*.fls
-*.fdb_latexmk
-archive/
