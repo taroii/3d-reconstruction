@@ -8,3 +8,20 @@ data/
 
 # everything the pipeline produces (prediction cache, tables, figures)
 results/
+
+# --- legacy artefacts that exist in the server checkout ---
+# These are NOT part of the pivot but still sit in ~/taro/3d-reconstruction on
+# bruinml. Ignoring them keeps `git status` readable there and makes an
+# accidental `git add -A` harmless. The ACCV work itself lives on the
+# `curvature` branch and the `archive/pre-curvature-main` tag.
+DDUSt3R/
+mast3r/
+cache/
+curv/
+paper/
+spectral/
+tartanair_tools/
+archive/
+*.pth
+*.zip
+*.log
