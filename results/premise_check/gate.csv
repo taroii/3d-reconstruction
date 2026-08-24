@@ -1,0 +1,11 @@
+dataset,tier,status,n_scenes,n_views,n_boundary,frac_boundary_valid,frac_boundary_masked,usable,note
+middlebury,A,ok,8,8,216953,0.9789677948680129,0.0,True,
+infinigen,A,ok,8,21,5332587,0.8212424851202615,0.0,True,
+ibims,B,ok,8,8,71299,0.7648494368784976,0.047125485630934515,True,
+tartanair,A,ok,8,24,945366,0.8260557286807437,0.0,True,
+pointodyssey,A,ok,8,24,264238,0.9619358305769798,0.0,True,
+spring,A,ok,8,24,2604581,0.9203345950845837,0.0,True,
+sintel,A,ok,8,24,229696,0.93803113680691,0.004458066313736417,True,
+eth3d,B,ok,8,24,1266,0.9281200631911533,0.0,True,
+nyuv2,C,ok,8,23,67278,0.5178513035464788,0.0,True,
+bonn,C,ok,8,24,55432,0.8794198297012555,0.0,True,

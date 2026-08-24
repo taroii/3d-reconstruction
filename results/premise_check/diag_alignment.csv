@@ -1,0 +1,10 @@
+dataset,stream,n_eval,FP_scale_only,FP_affine,delta_FP,median_fitted_shift_m
+ibims,pi3_local,336319,0.297366,0.298603,+0.001237,0.0302
+ibims,vggt_depth,336319,0.292900,0.289130,-0.003770,-0.0101
+ibims,vggt_point,336319,0.238922,0.229954,-0.008968,-0.0225
+infinigen,pi3_local,1501578,0.160289,0.230070,+0.069781,3.8145
+infinigen,vggt_depth,1501578,0.199455,0.212529,+0.013074,-2.6932
+infinigen,vggt_point,1501578,0.184903,0.185197,+0.000293,-2.7337
+middlebury,pi3_local,547603,0.289189,0.361390,+0.072200,0.2885
+middlebury,vggt_depth,547603,0.315106,0.342767,+0.027661,0.0372
+middlebury,vggt_point,547603,0.254073,0.274726,+0.020654,0.0823

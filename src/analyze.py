@@ -390,6 +390,43 @@ def write_decision(out, res, outcome, why, rows, warnings=()):
     print("wrote", p)
 
 
+def write_breakdown(out, res):
+    """Per-dataset / per-tier FP for every stream AND the GT control.
+
+    The protocol expects FP_GT ~= 0 on synthetic data by construction (Sec. 5):
+    that is what makes a non-zero model FP attributable to the model rather than
+    to contaminated supervision. A single pooled FP_GT hides whether that holds,
+    because a run mixing Tier A synthetic with Tier B real data will show the real
+    data's sensor contamination as if it were a property of the whole study.
+    """
+    cfg = res["config"]["centre"]
+    per = {}
+    for sc in res["scenes"]:
+        for c in sc["cells"]:
+            if (c["eta"], c["tau"], c["beta"]) != (cfg["eta"], cfg["tau"], cfg["beta"]):
+                continue
+            k = (sc["dataset"], sc.get("tier", "?"), c["stream"])
+            a = per.setdefault(k, dict(n_fp=0, n_eval=0, scenes=set()))
+            a["n_fp"] += c["n_fp"]; a["n_eval"] += c["n_eval"]
+            a["scenes"].add(sc["scene"])
+    p = os.path.join(out, "breakdown_by_dataset.csv")
+    with open(p, "w", newline="") as f:
+        w = csv.writer(f)
+        w.writerow(["dataset", "tier", "stream", "n_scenes", "n_eval", "FP"])
+        for (ds, tier, st), a in sorted(per.items()):
+            w.writerow([ds, tier, st, len(a["scenes"]), a["n_eval"],
+                        f"{a['n_fp']/a['n_eval']:.6f}" if a["n_eval"] else ""])
+    print("wrote", p)
+    print("\n=== FP by dataset (centre thresholds) ===")
+    print(f"{'dataset':12s} {'tier':4s} {'stream':12s} {'scenes':>6s} {'FP':>8s}")
+    for (ds, tier, st), a in sorted(per.items()):
+        if a["n_eval"]:
+            flag = "   <-- GT control" if st == GT else ""
+            print(f"{ds:12s} {tier:4s} {st:12s} {len(a['scenes']):>6d} "
+                  f"{a['n_fp']/a['n_eval']:>8.4f}{flag}")
+    return p
+
+
 def write_tables(out, res, rows):
     p = os.path.join(out, "table_main.csv")
     cols = ["stream", "n_scenes", "n_scenes_tierA", "FP_model", "FP_model_tierA",
@@ -504,6 +541,8 @@ def _main():
     ap.add_argument("--preregister", action="store_true")
     ap.add_argument("--force", action="store_true", help="allow re-writing decision.md")
     ap.add_argument("--decide", action="store_true")
+    ap.add_argument("--breakdown", action="store_true",
+                    help="per-dataset/tier FP incl. the GT control")
     ap.add_argument("--figs", action="store_true")
     ap.add_argument("--n-scenes", type=int, default=5)
     a = ap.parse_args()
@@ -515,6 +554,9 @@ def _main():
     if not os.path.exists(rp):
         raise SystemExit(f"{rp} not found -- run src/measure.py first.")
     res = json.load(open(rp))
+    if a.breakdown:
+        write_breakdown(a.out, res)
+        return 0
     if a.figs:
         figures(a.out, res, a.n_scenes)
     if a.decide or not a.figs:
@@ -526,6 +568,7 @@ def _main():
         outcome, why, rows, warns = decide(res, gate_rows, prereg_constants(a.out))
         write_decision(a.out, res, outcome, why, rows, warns)
         write_tables(a.out, res, rows)
+        write_breakdown(a.out, res)
         print(f"\n=== {outcome} ===\n{why}")
         for w in warns:
             print(f"  ! {w}")

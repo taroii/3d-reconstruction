@@ -1,0 +1,13 @@
+stream,density_lo,density_hi,band,n_eval,FP
+vggt_point,0.0,0.1,sparse (clean silhouette),285290,0.242564
+vggt_point,0.1,0.2,moderate,709425,0.208966
+vggt_point,0.2,0.35,dense,613303,0.176811
+vggt_point,0.35,1.01,saturated (mesh/foliage),777482,0.220257
+vggt_depth,0.0,0.1,sparse (clean silhouette),285290,0.299790
+vggt_depth,0.1,0.2,moderate,709425,0.248708
+vggt_depth,0.2,0.35,dense,613303,0.195672
+vggt_depth,0.35,1.01,saturated (mesh/foliage),777482,0.242559
+pi3_local,0.0,0.1,sparse (clean silhouette),285290,0.282772
+pi3_local,0.1,0.2,moderate,709425,0.229989
+pi3_local,0.2,0.35,dense,613303,0.176921
+pi3_local,0.35,1.01,saturated (mesh/foliage),777482,0.188710
