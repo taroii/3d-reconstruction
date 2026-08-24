@@ -75,12 +75,15 @@ SPECS = {
                          contam=[], note="structured light, very sharp boundaries"),
     "infinigen":    dict(tier="A", max_depth=200.0, sub="premise/infinigen",
                          contam=[], note="procedural, post-dates most training mixes"),
+    "ibims":        dict(tier="B", max_depth=49.0, sub="premise/ibims1/ibims1_core_raw",
+                         contam=[],
+                         note="purpose-built for depth-boundary eval; laser GT, 100 images"),
     "eth3d":        dict(tier="B", max_depth=100.0, sub="premise/eth3d",
                          contam=["vggt?"], note="laser GT, real"),
     "nyuv2":        dict(tier="C", max_depth=10.0, sub="premise/nyuv2",
                          contam=["vggt?", "pi3?"],
                          note="control: GT itself is known to contain flying points"),
-    "bonn":         dict(tier="C", max_depth=10.0, sub="premise/bonn",
+    "bonn":         dict(tier="C", max_depth=10.0, sub="premise/bonn/rgbd_bonn_dataset",
                          contam=[], note="control: GT masked at boundaries, should FAIL the gate"),
 }
 TIER1_MODELS = ("vggt", "pi3")
@@ -92,6 +95,14 @@ _TAG_FLOAT = 202021.25
 # authors give for converting their distance maps (ml-hypersim issue #9).
 HYPERSIM_WH, HYPERSIM_FOCAL = (1024, 768), 886.81
 BONN_DEPTH_SCALE = 5000.0        # TUM RGB-D convention: metres = png / 5000
+# iBims-1: metres = png / 65535 * 50. NOTE the shipped readme states the inverse
+# ("depth_map*65535/50"), which is dimensionally impossible -- it yields millions
+# of metres. Verified empirically against three scenes: this direction gives the
+# expected indoor ranges (1.0-7.3 m), the readme's does not. 65535 is the
+# saturation ceiling and marks no-return, not a 50 m surface.
+IBIMS_DEPTH_SCALE, IBIMS_SATURATED = 50.0 / 65535.0, 65535
+# ETH3D DSLR native frame (Nikon D3X). GT depth is always this size.
+ETH3D_NATIVE = (4032, 6048)
 
 
 @dataclass
@@ -262,8 +273,14 @@ def scenes(ds):
         return sorted(os.path.basename(p) for p in glob.glob(os.path.join(r, "*"))
                       if os.path.isfile(os.path.join(p, "calib.txt")))
     if ds == "infinigen":
-        return sorted(f"{os.path.basename(os.path.dirname(p))}/{os.path.basename(p)}"
-                      for p in glob.glob(os.path.join(r, "*", "camera_*")))
+        # tarballs extract to <seed>/<seed>/frames/{Depth,Image}/<camera>/
+        return sorted(f"{p.split(os.sep)[-4]}/{os.path.basename(p)}"
+                      for p in glob.glob(os.path.join(r, "*", "*", "frames", "Depth", "camera_*")))
+    if ds == "ibims":
+        # 100 independent single images from different rooms: each IS a scene,
+        # which is exactly the unit of analysis Sec. 6.7 wants.
+        return sorted(os.path.splitext(os.path.basename(p))[0]
+                      for p in glob.glob(os.path.join(r, "depth", "*.png")))
     if ds == "eth3d":
         return sorted(os.path.basename(p) for p in glob.glob(os.path.join(r, "*"))
                       if os.path.isdir(os.path.join(p, "ground_truth_depth")))
@@ -341,15 +358,25 @@ def views(ds, scene, n=None):
                             os.path.join(d0, "calib.txt")))
     elif ds == "infinigen":
         seed, cam = scene.split("/")
-        b = os.path.join(root_of(ds), seed, cam)
-        for p in sorted(glob.glob(os.path.join(b, "Depth_npy", "*.npy"))):
-            i = int("".join(filter(str.isdigit, os.path.basename(p)))[:4] or 0)
-            rgbs = sorted(glob.glob(os.path.join(b, "Image_png", "*.png")))
-            stem = os.path.basename(p).replace("Depth", "Image").replace(".npy", ".png")
-            rgb = os.path.join(b, "Image_png", stem)
+        fr = os.path.join(root_of(ds), seed, seed, "frames")
+        for p in sorted(glob.glob(os.path.join(fr, "Depth", cam, "*.npy"))):
+            # Depth_0_0_0120_0.npy pairs with Image_0_0_0120_0.png; the numeric
+            # field is the frame index.
+            base = os.path.basename(p)
+            parts = base.replace(".npy", "").split("_")
+            i = int(parts[3]) if len(parts) > 3 and parts[3].isdigit() else len(out)
+            rgb = os.path.join(fr, "Image", cam, base.replace("Depth", "Image")
+                               .replace(".npy", ".png"))
             if not os.path.exists(rgb):
-                rgb = rgbs[min(len(out), len(rgbs) - 1)] if rgbs else ""
+                cand = sorted(glob.glob(os.path.join(fr, "Image", cam, f"*{parts[3]}*.png"))) \
+                       if len(parts) > 3 else []
+                rgb = cand[0] if cand else ""
             out.append(View(ds, scene, i, rgb, p))
+    elif ds == "ibims":
+        r0 = root_of(ds)
+        out.append(View(ds, scene, 0, os.path.join(r0, "rgb", scene + ".png"),
+                        os.path.join(r0, "depth", scene + ".png"),
+                        os.path.join(r0, "calib", scene + ".txt")))
     elif ds == "eth3d":
         b = os.path.join(root_of(ds), scene)
         for p in sorted(glob.glob(os.path.join(b, "ground_truth_depth", "**", "*"),
@@ -429,15 +456,41 @@ def load(v, with_rgb=False):
             raw = raw[..., 0]
         mask = np.isfinite(raw)
         K = np.eye(3)                              # not needed for the measurement
+    elif ds == "ibims":
+        png = _read_png(v.depth).astype(np.float32)
+        raw = png * IBIMS_DEPTH_SCALE
+        fx, fy, cx, cy = (float(x) for x in open(v.cam).read().strip().split(","))
+        K = np.array([[fx, 0, cx], [0, fy, cy], [0, 0, 1.0]])
+        r0 = root_of(ds)
+        # Despite the name, mask_invalid is TRUE where the pixel is VALID
+        # (verified: its False regions carry 0% depth). mask_transp marks
+        # non-transparent surfaces, where the laser return is trustworthy.
+        mask = (png > 0) & (png < IBIMS_SATURATED)
+        for m in ("mask_invalid", "mask_transp"):
+            f = os.path.join(r0, m, v.scene + ".png")
+            if os.path.exists(f):
+                mask &= _read_png(f).astype(bool)
     elif ds == "eth3d":
         buf = np.fromfile(v.depth, dtype="<f4")
-        side = int(round(np.sqrt(buf.size * 4 / 3)))   # 4:3 DSLR frames
-        for hh in (side * 3 // 4, side):
-            if hh and buf.size % hh == 0:
-                raw = buf.reshape(hh, buf.size // hh).astype(np.float32)
-                break
-        else:
-            raise IOError(f"{v.depth}: cannot infer depth map shape from {buf.size} floats")
+        # ETH3D GT depth is a raw float32 grid in the ORIGINAL (distorted) DSLR
+        # frame -- constant 4032x6048 across every scene we checked. The
+        # `dslr_images_undistorted` JPGs are a DIFFERENT, per-scene size
+        # (6205x4135, 6220x4141, ...) and do NOT pair with it pixel-for-pixel, so
+        # they must not be used as the RGB input for these depth maps.
+        hw = None
+        if v.rgb and os.path.exists(v.rgb):
+            from PIL import Image
+            w0, h0 = Image.open(v.rgb).size
+            if w0 * h0 == buf.size:
+                hw = (h0, w0)
+        if hw is None:
+            for h0 in (ETH3D_NATIVE[0], ETH3D_NATIVE[1]):
+                if buf.size % h0 == 0:
+                    hw = (h0, buf.size // h0)
+                    break
+        if hw is None:
+            raise IOError(f"{v.depth}: cannot infer depth shape from {buf.size} floats")
+        raw = buf.reshape(hw).astype(np.float32)
         mask = np.isfinite(raw) & (raw > 0)
         K = np.eye(3)
     elif ds == "bonn":
@@ -517,7 +570,15 @@ def gate(ds, n_scenes=8, n_views=4, eta=FM.ETA0, w=3):
                 print(f"    ! {v.key}: {type(e).__name__}: {e}", flush=True)
                 continue
             nv += 1
+            # The pre-mask validity must ALSO exclude non-positive raw values.
+            # NYUv2's raw sensor map has 0-valued holes where the cleaned map was
+            # in-painted, so range_valid (computed from the cleaned map) can be
+            # True at a raw 0. Those zeros reach rel_jump's min(D(p),D(q))
+            # denominator and produce inf/NaN jumps -- which is what the
+            # "divide by zero" warning was, and it moves a gate verdict that sits
+            # right on the 0.5 threshold.
             rv = d.range_valid if d.range_valid is not None else np.isfinite(d.depth_raw)
+            rv = rv & np.isfinite(d.depth_raw) & (d.depth_raw > 0)
             pre = np.where(rv, d.depth_raw, np.nan).astype(np.float64)
             B = FM.boundary_set(pre, rv, eta)          # detected BEFORE the mask
             pix = np.argwhere(B)

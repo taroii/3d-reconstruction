@@ -39,7 +39,9 @@ ETA0, TAU0, BETA0 = 0.05, 2, 0.2
 def rel_jump(depth, valid):
     """max relative depth jump to any 4-neighbour. Invalid pixels and invalid
     neighbours contribute nothing; a pixel with no valid neighbour gets 0."""
-    d = np.where(valid, depth, np.nan).astype(np.float64)
+    # A non-positive depth would make min(D(p),D(q)) zero and turn the relative
+    # jump into inf; treat it as invalid rather than as an infinitely sharp edge.
+    d = np.where(valid & np.isfinite(depth) & (depth > 0), depth, np.nan).astype(np.float64)
     out = np.zeros(d.shape, np.float64)
     for ax, sh in ((0, 1), (0, -1), (1, 1), (1, -1)):
         n = np.roll(d, sh, axis=ax)
@@ -48,7 +50,8 @@ def rel_jump(depth, valid):
             (n[:1] if sh > 0 else n[-1:])[...] = np.nan
         else:
             (n[:, :1] if sh > 0 else n[:, -1:])[...] = np.nan
-        j = np.abs(d - n) / np.minimum(d, n)
+        with np.errstate(divide="ignore", invalid="ignore"):
+            j = np.abs(d - n) / np.minimum(d, n)
         out = np.fmax(out, np.nan_to_num(j, nan=0.0, posinf=0.0))
     return np.where(valid, out, 0.0)
 

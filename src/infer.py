@@ -101,6 +101,14 @@ def _device():
 
 
 def _load_vggt():
+    """Load VGGT-1B, preferring a local `model.pt`.
+
+    The repo ships the SAME 5 GB checkpoint twice -- `model.pt` and
+    `model.safetensors`. `from_pretrained` wants the safetensors copy, so on a
+    slow link it blocks for a second full 5 GB download of weights already on
+    disk. `model.pt` is a plain state_dict (it is what VGGT's own README loads),
+    so we use it when present and only fall back to the hub otherwise.
+    """
     if "vggt" not in _MODELS:
         try:
             from vggt.models.vggt import VGGT
@@ -108,9 +116,25 @@ def _load_vggt():
             raise SystemExit(
                 "VGGT not importable. Install into the run env, e.g.\n"
                 "  pip install git+https://github.com/facebookresearch/vggt.git") from e
+        import glob as _glob
         import torch
-        m = VGGT.from_pretrained("facebook/VGGT-1B").to(_device()).eval()
-        _MODELS["vggt"] = m
+        hits = sorted(_glob.glob(os.path.expanduser(
+            "~/.cache/huggingface/hub/models--facebook--VGGT-1B/snapshots/*/model.pt")))
+        if hits:
+            print(f"  VGGT: local state_dict {hits[-1]}", flush=True)
+            m = VGGT()
+            sd = torch.load(hits[-1], map_location="cpu", weights_only=True)
+            sd = sd.get("model", sd) if isinstance(sd, dict) else sd
+            missing, unexpected = m.load_state_dict(sd, strict=False)
+            if missing:
+                raise SystemExit(f"VGGT state_dict is missing {len(missing)} keys "
+                                 f"(first: {missing[:3]}) -- refusing to run a "
+                                 f"partially initialised model.")
+            if unexpected:
+                print(f"  VGGT: ignoring {len(unexpected)} unexpected keys", flush=True)
+        else:
+            m = VGGT.from_pretrained("facebook/VGGT-1B")
+        _MODELS["vggt"] = m.to(_device()).eval()
     return _MODELS["vggt"]
 
 
