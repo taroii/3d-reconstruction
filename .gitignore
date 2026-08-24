@@ -6,8 +6,17 @@ __pycache__/
 # datasets live on the server and are reached through here by symlink
 data/
 
-# everything the pipeline produces (prediction cache, tables, figures)
-results/
+# Pipeline output. The HEAVY, regenerable artefacts stay out of git; the small
+# scientific record (decision.md, gate/contamination/table/sensitivity/diag CSVs)
+# is committed, so a result never exists only on one machine's disk.
+results/**/preds/
+results/**/figs/
+results/**/results.json
+results/**/inference_manifest.json
+results/**/*.png
+results/**/*.npy
+results/**/*.npz
+results/normals_sanity/
 
 # --- legacy artefacts that exist in the server checkout ---
 # These are NOT part of the pivot but still sit in ~/taro/3d-reconstruction on

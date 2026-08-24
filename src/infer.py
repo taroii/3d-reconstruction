@@ -40,6 +40,7 @@ MODEL_LONG_SIDE = 518
 PATCH = 14
 _MODELS: dict[str, object] = {}
 _FWD_ERRORS: dict[str, int] = {}
+_NO_RGB: list[str] = []
 
 
 # --------------------------------------------------------------------------- #
@@ -211,12 +212,21 @@ def load_pred(out, stream, key, gt_shape):
         return None
     d = np.load(p)
     z = d["depth"].astype(np.float64)
-    if "gt_hw" in d and tuple(d["gt_hw"]) != tuple(gt_shape):
-        raise ValueError(
-            f"{p}: cached prediction was made for a {tuple(d['gt_hw'])} GT frame but "
-            f"{tuple(gt_shape)} was requested. Resizing across a different aspect "
-            f"ratio would misregister the prediction against the boundary. Re-run "
-            f"inference for this view.")
+    if "gt_hw" in d:
+        ch, cw = (int(x) for x in d["gt_hw"])          # frame the prediction was made for
+        gh, gw = int(gt_shape[0]), int(gt_shape[1])    # frame it is being measured on
+        # A pure RESCALE is fine: some datasets ship RGB at a different resolution
+        # from their depth (Infinigen renders 1280x720 images against 2560x1440
+        # depth), and nearest-neighbour to GT resolution is exactly what Sec. 6.2
+        # prescribes. A change of ASPECT is not fine -- that would stretch the
+        # prediction off the boundary it is being scored against.
+        if ch and cw and gh and gw and abs((cw / ch) - (gw / gh)) > 1e-3:
+            raise ValueError(
+                f"{p}: cached prediction was made for a {(ch, cw)} frame with aspect "
+                f"{cw/ch:.4f}, but it is being measured on {(gh, gw)} with aspect "
+                f"{gw/gh:.4f}. Rescaling across a different aspect ratio would "
+                f"misregister the prediction against the boundary. Re-run inference "
+                f"for this view.")
     return nn_resize(z, gt_shape)
 
 
@@ -237,6 +247,12 @@ def run(streams, datasets, n_scenes, n_views, out, overwrite=False):
             vd = D.load(v, with_rgb=True)
         except Exception as e:
             print(f"  ! load {v.key}: {type(e).__name__}: {e}", flush=True)
+            continue
+        if vd.rgb is None:
+            # A view with no readable RGB cannot be fed to a model. Skip it
+            # instead of dying: a single missing file used to abort the entire
+            # inference pass and leave the prediction cache silently partial.
+            _NO_RGB.append(v.key)
             continue
         raw = {}
         for fam in families:
@@ -270,6 +286,10 @@ def run(streams, datasets, n_scenes, n_views, out, overwrite=False):
     old = json.load(open(mp)) if os.path.exists(mp) else []
     json.dump(old + manifest, open(mp, "w"), indent=1)
     print(f"wrote {len(manifest)} predictions; manifest -> {mp}")
+    if _NO_RGB:
+        print(f"\n!! {len(_NO_RGB)} view(s) had no readable RGB and were skipped, e.g. "
+              f"{_NO_RGB[:3]}. measure.py drops any view missing a stream, so these "
+              f"are excluded from the study rather than silently half-measured.")
     if _FWD_ERRORS:
         print("\n!! forward-pass failures (these streams produced NO data):")
         for fam, n in _FWD_ERRORS.items():

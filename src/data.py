@@ -367,11 +367,11 @@ def views(ds, scene, n=None):
             i = int(parts[3]) if len(parts) > 3 and parts[3].isdigit() else len(out)
             rgb = os.path.join(fr, "Image", cam, base.replace("Depth", "Image")
                                .replace(".npy", ".png"))
-            if not os.path.exists(rgb):
-                cand = sorted(glob.glob(os.path.join(fr, "Image", cam, f"*{parts[3]}*.png"))) \
-                       if len(parts) > 3 else []
-                rgb = cand[0] if cand else ""
-            out.append(View(ds, scene, i, rgb, p))
+            # Emit a view only when BOTH channels are on disk. The release is
+            # per-seed-per-camera tarballs, so a partial download leaves whole
+            # seeds with depth but no images; those must not enter the study.
+            if os.path.exists(rgb):
+                out.append(View(ds, scene, i, rgb, p))
     elif ds == "ibims":
         r0 = root_of(ds)
         out.append(View(ds, scene, 0, os.path.join(r0, "rgb", scene + ".png"),

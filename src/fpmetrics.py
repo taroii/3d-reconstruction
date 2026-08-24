@@ -182,6 +182,27 @@ def align_scale(pred, gt, mask, mode="median"):
     raise ValueError(mode)
 
 
+def align_affine(pred, gt, mask):
+    """Least-squares scale AND shift on the interior: gt ~= a*pred + b.
+
+    NOT part of the pre-registered analysis, which is scale-only (Sec. 6.1).
+    This exists as a ROBUSTNESS DIAGNOSTIC: if a model is affine-invariant rather
+    than scale-invariant, a scale-only fit leaves a residual depth offset that
+    displaces the whole prediction, and near an occlusion boundary a displaced
+    surface lands inside the void and is scored as a flying pixel. Comparing FP
+    under both alignments separates 'the model puts points in empty space' from
+    'the model has a global depth offset'.
+    """
+    p, g = pred[mask], gt[mask]
+    ok = np.isfinite(p) & np.isfinite(g) & (p > 0) & (g > 0)
+    if ok.sum() < 100:
+        return float("nan"), float("nan")
+    p, g = p[ok], g[ok]
+    A = np.vstack([p, np.ones_like(p)]).T
+    sol, *_ = np.linalg.lstsq(A, g, rcond=None)
+    return float(sol[0]), float(sol[1])
+
+
 # --------------------------------------------------------------------------- #
 # the measurement
 # --------------------------------------------------------------------------- #

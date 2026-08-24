@@ -1,0 +1,12 @@
+dataset,tier,in_vggt_training,in_pi3_training,clean_for_all_tier1,note
+tartanair,A,unknown,no,False,"synthetic, exact depth"
+pointodyssey,A,no,no,True,synthetic dynamic
+spring,A,no,no,True,synthetic stereo
+sintel,A,no,no,True,"synthetic, eval-only by convention"
+hypersim,A,yes,unknown,False,RAY DISTANCE not planar z -- converted on load
+middlebury,A,no,no,True,"structured light, very sharp boundaries"
+infinigen,A,no,no,True,"procedural, post-dates most training mixes"
+ibims,B,no,no,True,"purpose-built for depth-boundary eval; laser GT, 100 images"
+eth3d,B,unknown,no,False,"laser GT, real"
+nyuv2,C,unknown,unknown,False,control: GT itself is known to contain flying points
+bonn,C,no,no,True,"control: GT masked at boundaries, should FAIL the gate"
