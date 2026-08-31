@@ -1,12 +1,12 @@
-dataset,tier,in_vggt_training,in_pi3_training,clean_for_all_tier1,note
-tartanair,A,unknown,no,False,"synthetic, exact depth"
-pointodyssey,A,no,no,True,synthetic dynamic
-spring,A,no,no,True,synthetic stereo
-sintel,A,no,no,True,"synthetic, eval-only by convention"
-hypersim,A,yes,unknown,False,RAY DISTANCE not planar z -- converted on load
-middlebury,A,no,no,True,"structured light, very sharp boundaries"
-infinigen,A,no,no,True,"procedural, post-dates most training mixes"
-ibims,B,no,no,True,"purpose-built for depth-boundary eval; laser GT, 100 images"
-eth3d,B,unknown,no,False,"laser GT, real"
-nyuv2,C,unknown,unknown,False,control: GT itself is known to contain flying points
-bonn,C,no,no,True,"control: GT masked at boundaries, should FAIL the gate"
+dataset,tier,in_vggt_training,in_pi3_training,in_dust3r_training,in_mast3r_training,clean_for_all,note
+tartanair,A,no,yes,no,yes,False,synthetic; IN mast3r and pi3 training mixes
+pointodyssey,A,yes,transitive,no,no,False,synthetic dynamic; IN vggt training mix
+spring,A,no,no,no,no,True,synthetic stereo; postdates all four models
+sintel,A,no,no,no,no,True,synthetic; evaluation-only in vggt and pi3
+hypersim,A,yes,yes,no,no,False,IN BOTH tier-1 mixes -- separate stratum. RAY DISTANCE not planar z; converted on load
+middlebury,A,no,no,no,no,True,"structured light, very sharp boundaries; CLEAN"
+infinigen,A,no,no,no,no,True,"procedural, postdates the mixes; CLEAN"
+ibims,B,no,no,no,no,True,purpose-built for depth-boundary eval; laser GT; CLEAN
+eth3d,B,no,no,no,no,True,"laser GT, real; evaluation-only in vggt and pi3"
+nyuv2,C,no,no,no,no,True,"control: clean, but FAILS the measurability gate"
+bonn,C,no,no,no,no,True,"control: clean, but the gate is blind to its masking"

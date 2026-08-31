@@ -38,6 +38,14 @@ import data as D
 
 MODEL_LONG_SIDE = 518
 PATCH = 14
+# DUSt3R is a different backbone lineage (CroCo ViT-L/16, 512px checkpoint), so it
+# needs its own input geometry. Everything else about the measurement is identical.
+GEOM = {"vggt": (518, 14), "pi3": (518, 14), "dust3r": (512, 16), "mast3r": (512, 16)}
+DUST3R_REPO = os.path.expanduser("~/taro/premise_setup/dust3r")
+MAST3R_REPO = os.path.expanduser("~/taro/premise_setup/mast3r")
+DUST3R_CKPT = "/mnt/data/premise/models/dust3r/DUSt3R_ViTLarge_BaseDecoder_512_dpt.pth"
+MAST3R_CKPT = ("/mnt/data/premise/models/mast3r/"
+               "MASt3R_ViTLarge_BaseDecoder_512_catmlpdpt_metric.pth")
 _MODELS: dict[str, object] = {}
 _FWD_ERRORS: dict[str, int] = {}
 _NO_RGB: list[str] = []
@@ -49,10 +57,23 @@ _NO_RGB: list[str] = []
 # Padding colour per model family. VGGT's released load_and_preprocess_images
 # pads WHITE; padding black instead puts a hard synthetic edge at the image
 # border, which is the last thing a flying-pixel study wants near its statistics.
-PAD_VALUE = {"vggt": 1.0, "pi3": 1.0}
+PAD_VALUE = {"vggt": 1.0, "pi3": 1.0, "dust3r": 1.0, "mast3r": 1.0}
+
+# Input range each family expects. VGGT and pi3 normalize internally from [0,1].
+# The CroCo family does NOT: every released DUSt3R/MASt3R loader applies
+# `Normalize((0.5,)*3, (0.5,)*3)`, i.e. maps [0,1] -> [-1,1], and the model has no
+# normalization of its own. Feeding [0,1] silently halves the contrast and shifts
+# the mean; measured per-scene swings of up to 6 points, which is larger than the
+# 5-point pre-registered margin. PAD_VALUE 1.0 maps to +1.0, so white padding
+# stays white.
+INPUT_RANGE = {"vggt": "01", "pi3": "01", "dust3r": "pm1", "mast3r": "pm1"}
 
 
-def _preprocess(rgb, pad=1.0):
+def to_model_range(x, fam):
+    return x * 2.0 - 1.0 if INPUT_RANGE.get(fam, "01") == "pm1" else x
+
+
+def _preprocess(rgb, pad=1.0, long_side=MODEL_LONG_SIDE, patch=PATCH):
     """RGB uint8 (H,W,3) -> float32 (3,Hm,Wm) in [0,1] plus crop metadata.
 
     Long side -> 518, aspect preserved, then padded up to a multiple of the patch
@@ -67,12 +88,12 @@ def _preprocess(rgb, pad=1.0):
     nothing padded ever reaches a statistic.
     """
     H, W = rgb.shape[:2]
-    s = MODEL_LONG_SIDE / max(H, W)
+    s = long_side / max(H, W)
     h, w = max(1, round(H * s)), max(1, round(W * s))
     r = (np.arange(h) + 0.5) * H / h
     c = (np.arange(w) + 0.5) * W / w
     small = rgb[np.clip(r.astype(int), 0, H - 1)][:, np.clip(c.astype(int), 0, W - 1)]
-    ph, pw = (-h) % PATCH, (-w) % PATCH
+    ph, pw = (-h) % patch, (-w) % patch
     t0, l0 = ph // 2, pw // 2
     canvas = np.full((h + ph, w + pw, 3), float(pad), np.float32)
     canvas[t0:t0 + h, l0:l0 + w] = small.astype(np.float32) / 255.0
@@ -135,6 +156,10 @@ def _load_vggt():
                 print(f"  VGGT: ignoring {len(unexpected)} unexpected keys", flush=True)
         else:
             m = VGGT.from_pretrained("facebook/VGGT-1B")
+        # Cache BEFORE the device move: if .to(cuda) OOMs, an uncached model
+        # means the next view re-reads 5 GB from disk, and the whole run
+        # degenerates into reloading the checkpoint once per view.
+        _MODELS["vggt"] = m.eval()
         _MODELS["vggt"] = m.to(_device()).eval()
     return _MODELS["vggt"]
 
@@ -147,14 +172,22 @@ def _load_pi3():
             raise SystemExit(
                 "pi3 not importable. Install into the run env, e.g.\n"
                 "  pip install git+https://github.com/yyfz/Pi3.git") from e
-        m = Pi3.from_pretrained("yyfz233/Pi3").to(_device()).eval()
-        _MODELS["pi3"] = m
+        m = Pi3.from_pretrained("yyfz233/Pi3").eval()
+        _MODELS["pi3"] = m                      # cache before the device move
+        _MODELS["pi3"] = m.to(_device()).eval()
     return _MODELS["pi3"]
 
 
-def _amp(torch):
+def _amp(torch, fam="vggt"):
+    """Autocast policy per family.
+
+    VGGT and pi3 ship bf16 inference. DUSt3R/MASt3R do not: their own
+    `inference()` defaults to `use_amp=False` and the DPT head re-enters fp32
+    explicitly. Measured 5.0 points of FP difference on one scene from autocast
+    alone -- not acceptable slack for a thresholded boundary statistic.
+    """
     dev = _device()
-    if dev != "cuda":
+    if dev != "cuda" or fam in ("dust3r", "mast3r"):
         return torch.autocast("cpu", enabled=False)
     bf16 = torch.cuda.get_device_capability()[0] >= 8
     return torch.autocast("cuda", dtype=torch.bfloat16 if bf16 else torch.float16)
@@ -191,7 +224,89 @@ def _fwd_pi3(x):
     return {"local": lp[0, 0, ..., 2].float().cpu().numpy()}
 
 
+def _load_dust3r():
+    """Load upstream DUSt3R (not the D2USt3R fork).
+
+    DUSt3R is the architecturally INDEPENDENT witness: CroCo-pretrained, no VGGT
+    weights anywhere in its lineage, and its eight-dataset training mix contains
+    none of this study's clean sets. Every other stream here runs on a
+    VGGT-trained frozen encoder, so this is the only one that can corroborate
+    rather than echo.
+    """
+    if "dust3r" not in _MODELS:
+        import sys
+        if DUST3R_REPO not in sys.path:
+            sys.path.insert(0, DUST3R_REPO)
+        try:
+            from dust3r.model import AsymmetricCroCo3DStereo
+        except ImportError as e:
+            raise SystemExit(
+                f"dust3r not importable from {DUST3R_REPO}.\n"
+                f"  git clone --recursive https://github.com/naver/dust3r.git {DUST3R_REPO}") from e
+        import torch
+        if not os.path.exists(DUST3R_CKPT):
+            raise SystemExit(f"DUSt3R checkpoint missing at {DUST3R_CKPT}")
+        m = AsymmetricCroCo3DStereo.from_pretrained(DUST3R_CKPT)
+        _MODELS["dust3r"] = m
+        _MODELS["dust3r"] = m.to(_device()).eval()
+    return _MODELS["dust3r"]
+
+
+def _load_mast3r():
+    """MASt3R: same CroCo lineage as DUSt3R with an added matching head.
+
+    Included because §2 A1 asks for it alongside DUSt3R. Note it is NOT a second
+    independent witness -- it shares DUSt3R's backbone and pretraining, so
+    DUSt3R+MASt3R agreeing is one lineage, exactly as VGGT+pi3 is another.
+    """
+    if "mast3r" not in _MODELS:
+        import sys
+        # Insert in REVERSE priority: the last insert(0) ends up first on the
+        # path, and mast3r's `import dust3r.*` must resolve to its own pinned
+        # submodule, not the standalone clone.
+        for r in (DUST3R_REPO, os.path.join(MAST3R_REPO, "dust3r"), MAST3R_REPO):
+            if os.path.isdir(r) and r not in sys.path:
+                sys.path.insert(0, r)
+        try:
+            from mast3r.model import AsymmetricMASt3R
+        except ImportError as e:
+            raise SystemExit(
+                f"mast3r not importable from {MAST3R_REPO}.\n"
+                f"  git clone --recursive https://github.com/naver/mast3r.git {MAST3R_REPO}") from e
+        import torch
+        if not os.path.exists(MAST3R_CKPT):
+            raise SystemExit(f"MASt3R checkpoint missing at {MAST3R_CKPT}")
+        m = AsymmetricMASt3R.from_pretrained(MAST3R_CKPT)
+        _MODELS["mast3r"] = m
+        _MODELS["mast3r"] = m.to(_device()).eval()
+    return _MODELS["mast3r"]
+
+
+def _fwd_pairwise(x, loader, fam):
+    """Shared forward for the CroCo-lineage pairwise models.
+
+    Both DUSt3R and MASt3R take two views. A single view is fed as the SELF-PAIR
+    (I, I) and we read X^{1,1}, the pointmap of view 1 in view 1's OWN camera
+    frame -- exactly the per-view quantity this study measures, with no pose and
+    no cross-view alignment. Documented deviation: these models were designed for
+    genuine stereo pairs, and a degenerate self-pair is not what they were
+    trained on.
+    """
+    import torch
+    m = loader()
+    dev = _device()
+    xb = to_model_range(x[None], fam).to(dev)
+    shape = torch.tensor([[x.shape[1], x.shape[2]]], device=dev)
+    v1 = dict(img=xb, true_shape=shape, idx=[0], instance=["0"])
+    v2 = dict(img=xb, true_shape=shape, idx=[1], instance=["1"])
+    with torch.no_grad(), _amp(torch, fam):
+        r1, _ = m(v1, v2)
+    return {"point": r1["pts3d"][0, ..., 2].float().cpu().numpy()}
+
+
 STREAMS = {
+    "dust3r_point": ("dust3r", "point"),
+    "mast3r_point": ("mast3r", "point"),
     "vggt_point": ("vggt", "point"),
     "vggt_depth": ("vggt", "depth"),
     "pi3_local":  ("pi3", "local"),
@@ -230,8 +345,38 @@ def load_pred(out, stream, key, gt_shape):
     return nn_resize(z, gt_shape)
 
 
+def require_gpu(min_free_gb=6.0):
+    """Abort early if the GPU cannot hold the model.
+
+    bruinml is a SHARED box. When a colleague's job holds most of the 20 GB,
+    every view OOMs, and without this check the run still walks the whole
+    dataset producing nothing. Fail loudly at the start instead.
+    """
+    import torch
+    if not torch.cuda.is_available():
+        print("  ! no CUDA device; running on CPU (slow)", flush=True)
+        return
+    free, total = torch.cuda.mem_get_info()
+    free_gb, total_gb = free / 2**30, total / 2**30
+    print(f"  GPU: {free_gb:.1f} GB free of {total_gb:.1f} GB", flush=True)
+    if free_gb < min_free_gb:
+        import subprocess
+        try:
+            who = subprocess.run(
+                ["nvidia-smi", "--query-compute-apps=pid,used_memory",
+                 "--format=csv,noheader"], capture_output=True, text=True).stdout.strip()
+        except Exception:
+            who = "(nvidia-smi unavailable)"
+        raise SystemExit(
+            f"Only {free_gb:.1f} GB of GPU memory is free; this needs ~{min_free_gb:.0f} GB.\n"
+            f"Current GPU processes:\n  {who}\n"
+            f"This is a shared machine -- do NOT kill another user's job. Wait for it "
+            f"to finish, or run when the GPU is free.")
+
+
 def run(streams, datasets, n_scenes, n_views, out, overwrite=False):
     import torch
+    require_gpu()
     todo = [(ds, s, v) for ds in datasets for s in D.scenes(ds)[:n_scenes]
             for v in D.views(ds, s, n_views)]
     print(f"{len(todo)} views x {len(streams)} streams", flush=True)
@@ -254,14 +399,19 @@ def run(streams, datasets, n_scenes, n_views, out, overwrite=False):
             # inference pass and leave the prediction cache silently partial.
             _NO_RGB.append(v.key)
             continue
-        raw = {}
+        raw, metas = {}, {}
         for fam in families:
             if not any(STREAMS[s][0] == fam for s in need):
                 continue
-            x, meta = _preprocess(vd.rgb, PAD_VALUE.get(fam, 1.0))
+            ls, pt = GEOM.get(fam, (MODEL_LONG_SIDE, PATCH))
+            x, meta = _preprocess(vd.rgb, PAD_VALUE.get(fam, 1.0), ls, pt)
+            metas[fam] = meta
             xt = torch.from_numpy(x)
+            fwd = {"vggt": _fwd_vggt, "pi3": _fwd_pi3,
+                   "dust3r": lambda t: _fwd_pairwise(t, _load_dust3r, "dust3r"),
+                   "mast3r": lambda t: _fwd_pairwise(t, _load_mast3r, "mast3r")}[fam]
             try:
-                raw[fam] = (_fwd_vggt if fam == "vggt" else _fwd_pi3)(xt)
+                raw[fam] = fwd(xt)
             except Exception as e:
                 print(f"  ! {fam} {v.key}: {type(e).__name__}: {e}", flush=True)
                 _FWD_ERRORS[fam] = _FWD_ERRORS.get(fam, 0) + 1
@@ -271,13 +421,19 @@ def run(streams, datasets, n_scenes, n_views, out, overwrite=False):
             fam, field = STREAMS[s]
             if fam not in raw or field not in raw[fam]:
                 continue
-            z = _crop(raw[fam][field], meta).astype(np.float32)
+            z = _crop(raw[fam][field], metas[fam]).astype(np.float32)
             p = pred_path(out, s, v.key)
             os.makedirs(os.path.dirname(p), exist_ok=True)
-            np.savez_compressed(p, depth=z, model_hw=np.array(z.shape),
-                                gt_hw=np.array(meta["src"]))
+            # Write to a temp file and rename. The Phase 1 cache is populated by
+            # HARDLINKING Phase 0's files, so writing in place would share an
+            # inode and silently rewrite the Phase 0 artefact. os.replace swaps
+            # the name onto a fresh inode and leaves the original untouched.
+            tmp = p + ".tmp"
+            np.savez_compressed(tmp, depth=z, model_hw=np.array(z.shape),
+                                gt_hw=np.array(metas[fam]["src"]))
+            os.replace(tmp if tmp.endswith(".npz") else tmp + ".npz", p)
             manifest.append(dict(stream=s, key=v.key, dataset=ds, scene=sc,
-                                 model_hw=list(z.shape), gt_hw=list(meta["src"])))
+                                 model_hw=list(z.shape), gt_hw=list(metas[fam]["src"])))
         if (i + 1) % 25 == 0:
             print(f"  {i + 1}/{len(todo)}", flush=True)
 
@@ -296,6 +452,9 @@ def run(streams, datasets, n_scenes, n_views, out, overwrite=False):
             print(f"   {fam}: {n} views failed")
         print("   Fix these before measuring -- measure.py drops any view where a "
               "stream is missing, so a broken model silently shrinks the study.")
+        # Non-zero exit, or the `|| say "!! ... returned $?"` guards in the runner
+        # scripts are inert and a broken model produces a quietly smaller study.
+        raise SystemExit(1)
 
 
 def _main():
@@ -315,4 +474,4 @@ def _main():
 
 
 if __name__ == "__main__":
-    _main()
+    raise SystemExit(_main())

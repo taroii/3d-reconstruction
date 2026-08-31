@@ -151,10 +151,12 @@ def _main():
     ap.add_argument("--align", default="median", choices=("median", "lstsq"))
     ap.add_argument("--no-grid", action="store_true", help="centre thresholds only")
     a = ap.parse_args()
-    measure([d for d in a.datasets.split(",") if d],
-            [s for s in a.streams.split(",") if s], a.scenes, a.views, a.out,
-            w=a.w, delta_min=a.delta_min, align=a.align, grid=not a.no_grid)
+    res = measure([d for d in a.datasets.split(",") if d],
+                  [s for s in a.streams.split(",") if s], a.scenes, a.views, a.out,
+                  w=a.w, delta_min=a.delta_min, align=a.align, grid=not a.no_grid)
+    # A run that measured nothing must not look like a success to the caller.
+    return 0 if res["scenes"] else 4
 
 
 if __name__ == "__main__":
-    _main()
+    raise SystemExit(_main())

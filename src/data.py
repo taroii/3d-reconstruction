@@ -54,38 +54,61 @@ ROOT = os.environ.get("PREMISE_DATA_ROOT", "data")
 
 # tier: A = renderer-exact boundaries (primary), B = real capture (secondary),
 #       C = negative control (expected to misbehave; validates the pipeline).
-# contam: Tier 1 models known/suspected to have trained on it. Per Sec. 4 of
-#       notes/server_requirements.md, "unknown" counts as "yes" for safety, and
-#       the headline result must come from a dataset that is clean for ALL of
-#       them. Sources are each model's training-data table; entries marked "?"
-#       still need confirming against the paper before they are relied on.
+#
+# contam: models whose PAPER lists this dataset in its own training-data section.
+#       Verified 2026-08-31 against the primary sources, not secondary summaries:
+#         DUSt3R  §4    "Training data"  -- 8 datasets
+#         MASt3R  §4.1  "Training data"  -- 14 datasets
+#         VGGT    §3.3  "Training Data"
+#         pi3     §3.4  "Model Training" -- 15 datasets
+#       A dataset absent from all four is CLEAN and may carry the headline.
+#
+# TRANSITIVE EXPOSURE. pi3 is not trained from scratch: it initialises from the
+# pretrained VGGT model and keeps the ENCODER FROZEN. So anything in VGGT's mix
+# is partially contaminated for pi3 too, even when pi3's own list omits it, and
+# `vggt_point`, `vggt_depth` and `pi3_local` are NOT three independent witnesses
+# -- they share a VGGT-trained visual frontend. An artefact originating in
+# encoder features would appear in all three for one common reason. Corroborating
+# the effect needs a model from a different lineage: DUSt3R/MASt3R are
+# CroCo-pretrained, carry no VGGT weights, and are clean on every set below that
+# matters here.
+#
+# IRREDUCIBLE UNKNOWNS: MASt3R and pi3 each list "an internal dataset" with no
+# contents disclosed, so no clean set can be called fully verified.
 SPECS = {
     "tartanair":    dict(tier="A", max_depth=200.0, sub="tartanair",
-                         contam=["vggt?"], note="synthetic, exact depth"),
+                         contam=["mast3r", "pi3"],
+                         note="synthetic; IN mast3r and pi3 training mixes"),
     "pointodyssey": dict(tier="A", max_depth=200.0, sub="pointodyssey",
-                         contam=[], note="synthetic dynamic"),
+                         contam=["vggt", "pi3:transitive"],
+                         note="synthetic dynamic; IN vggt training mix"),
     "spring":       dict(tier="A", max_depth=100.0, sub="spring",
-                         contam=[], note="synthetic stereo"),
+                         contam=[], note="synthetic stereo; postdates all four models"),
     "sintel":       dict(tier="A", max_depth=100.0, sub="training",
-                         contam=[], note="synthetic, eval-only by convention"),
+                         contam=[], note="synthetic; evaluation-only in vggt and pi3"),
     "hypersim":     dict(tier="A", max_depth=100.0, sub="premise/hypersim",
-                         contam=["vggt", "pi3?"],
-                         note="RAY DISTANCE not planar z -- converted on load"),
+                         contam=["vggt", "pi3"],
+                         note="IN BOTH tier-1 mixes -- separate stratum. "
+                              "RAY DISTANCE not planar z; converted on load"),
     "middlebury":   dict(tier="A", max_depth=20.0, sub="premise/middlebury2014",
-                         contam=[], note="structured light, very sharp boundaries"),
+                         contam=[], note="structured light, very sharp boundaries; CLEAN"),
     "infinigen":    dict(tier="A", max_depth=200.0, sub="premise/infinigen",
-                         contam=[], note="procedural, post-dates most training mixes"),
+                         contam=[], note="procedural, postdates the mixes; CLEAN"),
     "ibims":        dict(tier="B", max_depth=49.0, sub="premise/ibims1/ibims1_core_raw",
                          contam=[],
-                         note="purpose-built for depth-boundary eval; laser GT, 100 images"),
+                         note="purpose-built for depth-boundary eval; laser GT; CLEAN"),
     "eth3d":        dict(tier="B", max_depth=100.0, sub="premise/eth3d",
-                         contam=["vggt?"], note="laser GT, real"),
+                         contam=[], note="laser GT, real; evaluation-only in vggt and pi3"),
     "nyuv2":        dict(tier="C", max_depth=10.0, sub="premise/nyuv2",
-                         contam=["vggt?", "pi3?"],
-                         note="control: GT itself is known to contain flying points"),
+                         contam=[],
+                         note="control: clean, but FAILS the measurability gate"),
     "bonn":         dict(tier="C", max_depth=10.0, sub="premise/bonn/rgbd_bonn_dataset",
-                         contam=[], note="control: GT masked at boundaries, should FAIL the gate"),
+                         contam=[],
+                         note="control: clean, but the gate is blind to its masking"),
 }
+# Every model the matrix tracks. The first two are the study's subjects; DUSt3R
+# and MASt3R are the architecturally independent lineage worth adding.
+MODELS = ("vggt", "pi3", "dust3r", "mast3r")
 TIER1_MODELS = ("vggt", "pi3")
 
 TARTANAIR_K = np.array([[320.0, 0, 320.0], [0, 320.0, 240.0], [0, 0, 1.0]])
@@ -605,33 +628,40 @@ def gate(ds, n_scenes=8, n_views=4, eta=FM.ETA0, w=3):
 
 
 def matrix(out=None):
-    """Sec. 4 contamination matrix: rows = datasets, cols = Tier 1 models.
+    """Sec. 4 contamination matrix, from the papers' own training-data sections.
 
-    "unknown" counts as "yes". A dataset is CLEAN only when no Tier 1 model is
-    known or suspected to have trained on it -- the headline result must come
-    from one of those.
+    Three states, not two: `yes` (named in that paper's list), `transitive` (not
+    named, but reachable through pi3's frozen VGGT encoder), `no`. A dataset is
+    CLEAN only when every model is `no` -- that is the only kind that may carry
+    the headline.
     """
     rows = []
     for ds, sp in SPECS.items():
-        c = {m: ("yes" if m in sp["contam"] else
-                 "unknown" if f"{m}?" in sp["contam"] else "no")
-             for m in TIER1_MODELS}
+        c = {}
+        for m in MODELS:
+            if m in sp["contam"]:
+                c[m] = "yes"
+            elif f"{m}:transitive" in sp["contam"]:
+                c[m] = "transitive"
+            else:
+                c[m] = "no"
         clean = all(v == "no" for v in c.values())
         rows.append(dict(dataset=ds, tier=sp["tier"],
-                         **{f"in_{m}_training": c[m] for m in TIER1_MODELS},
-                         clean_for_all_tier1=clean, note=sp["note"]))
+                         **{f"in_{m}_training": c[m] for m in MODELS},
+                         clean_for_all=clean, note=sp["note"]))
     w = max(len(r["dataset"]) for r in rows)
-    print(f"{'dataset':<{w}}  tier  " + "  ".join(f"{m:>8}" for m in TIER1_MODELS)
-          + "   clean?")
+    print(f"{'dataset':<{w}}  tier  " + "  ".join(f"{m:>10}" for m in MODELS) + "   clean?")
     for r in rows:
         print(f"{r['dataset']:<{w}}   {r['tier']}    "
-              + "  ".join(f"{r[f'in_{m}_training']:>8}" for m in TIER1_MODELS)
-              + f"   {'YES' if r['clean_for_all_tier1'] else 'no'}   {r['note']}")
-    ok = [r["dataset"] for r in rows if r["clean_for_all_tier1"] and r["tier"] == "A"]
-    print(f"\nTier A and clean for every Tier 1 model: {ok or 'NONE'}")
-    if not ok:
-        print("  -> No clean exact-boundary set. Sec. 4 says the fallback is to render "
-              "a small held-out set ourselves before trusting any headline number.")
+              + "  ".join(f"{r[f'in_{m}_training']:>10}" for m in MODELS)
+              + f"   {'YES' if r['clean_for_all'] else 'no':<4} {r['note']}")
+    clean = [r["dataset"] for r in rows if r["clean_for_all"]]
+    ok_a = [r["dataset"] for r in rows if r["clean_for_all"] and r["tier"] == "A"]
+    print(f"\nClean for every tracked model: {clean or 'NONE'}")
+    print(f"Tier A and clean (may carry the headline): {ok_a or 'NONE'}")
+    print("\nNOTE: vggt_point, vggt_depth and pi3_local share a VGGT-trained frozen "
+          "encoder;\n      they are not independent witnesses. DUSt3R/MASt3R are the "
+          "independent lineage.")
     if out:
         os.makedirs(out, exist_ok=True)
         pth = os.path.join(out, "contamination.csv")
