@@ -5,14 +5,18 @@
 # modifies a loss with intent to improve, tunes a threshold to strengthen an
 # effect, or adds a model without the contamination matrix being re-checked.
 #
-# Stages (default: all):
+# Stages (default: the 1A stages):
 #   1a-generality    add DUSt3R + MASt3R, same pipeline, same threshold grid
 #   1a-calibration   three rate variants + the K_p histogram, with the §2 gate
-#   1b-factorial     the controlled synthetic experiment
+#   1b-pilot         CNN learning rates for the factorial, chosen without FP
+#   1b-prereg        write-once pre-registration (needs the pilot) -- READ IT
+#   1b-run           the factorial itself (needs the pre-registration; resumable)
+#   1b-profiles      depth-profile figures for the run's design
 #
-#   bash scripts/phase1.sh                     # everything
-#   bash scripts/phase1.sh 1b-factorial        # just the factorial
-#   SEEDS=8 bash scripts/phase1.sh 1b-factorial
+# The 1B stages are deliberately separate commands with a human in between:
+#   bash scripts/phase1.sh 1b-pilot     # ~45 min; check 1b_pilot.md
+#   bash scripts/phase1.sh 1b-prereg    # review and commit 1b_prereg.md
+#   bash scripts/phase1.sh 1b-run       # ~3 h; safe to re-run after a crash
 set -u
 cd "$(dirname "$0")/.."
 
@@ -48,8 +52,8 @@ CLEAN=${CLEAN:-middlebury,infinigen,ibims,eth3d}
 STRATA=${STRATA:-hypersim}
 SCENES=${SCENES:-100}
 VIEWS=${VIEWS:-4}
-SEEDS=${SEEDS:-5}
-STAGES=${*:-1a-generality 1a-calibration 1b-factorial}
+OUT1B=${OUT1B:-results/phase1b_v2}                # v1 (results/phase1/1b_*) is superseded
+STAGES=${*:-1a-generality 1a-calibration}
 # The streams Phase 1 measures. Named once: the recalibration must be given the
 # SAME set, because it now drops any view where one of them is missing.
 ALL_STREAMS=${ALL_STREAMS:-dust3r_point,mast3r_point,vggt_point,vggt_depth,pi3_local}
@@ -130,11 +134,24 @@ for st in $STAGES; do
         --datasets "$CLEAN,$STRATA" --scenes $SCENES --views 2 --out "$OUT"
     ;;
 
-  1b-factorial)
-    # §3.4: the predictions are recorded before the run, and --run refuses
-    # to start without them.
-    [ -f "$OUT/1b_prereg.md" ] || $VG src/factorial.py --preregister --seeds "$SEEDS" --out "$OUT"
-    must "factorial" $VG src/factorial.py --run --seeds "$SEEDS" --out "$OUT"
+  1b-pilot)
+    must "factorial self-test" $VG src/factorial.py --selftest \
+      && must "1b pilot" $VG src/factorial.py --pilot --out "$OUT1B"
+    ;;
+
+  1b-prereg)
+    # Write-once, and refused without a passing pilot. Nothing runs after it on
+    # purpose: the record should be read, and committed, before any cell is fitted.
+    must "1b pre-registration" $VG src/factorial.py --preregister --out "$OUT1B"
+    ;;
+
+  1b-run)
+    # Refuses to start unless the live design matches 1b_prereg.md exactly.
+    must "1b factorial" $VG src/factorial.py --run --out "$OUT1B"
+    ;;
+
+  1b-profiles)
+    must "1b profiles" $VG src/profiles.py --all --out "$OUT1B/figs" --pilot "$OUT1B/1b_pilot.json"
     ;;
 
   *) echo "unknown stage: $st" >&2; exit 2 ;;
@@ -147,11 +164,14 @@ if [ "$FAILED" -gt 0 ]; then
 else
   say "=========== all stages succeeded ==========="
 fi
-say "deliverables in $OUT:"
-ls -la "$OUT" 2>/dev/null | grep -vE '^total|preds' | sed 's/^/  /'
+for d in "$OUT" "$OUT1B"; do
+  [ -d "$d" ] || continue
+  say "deliverables in $d:"
+  ls -la "$d" 2>/dev/null | grep -vE '^total|preds' | sed 's/^/  /'
+done
 echo
-echo "  decision.md selects a Test 2 branch of notes/outcome_tree.md from the"
-echo "  variance decomposition, with §0 labels attached. Note the tree's RESIDUAL"
-echo "  branch (predictor smoothness) is NOT the decomposition's unexplained"
-echo "  bucket (interactions/scene/seed); the two are reported separately."
+echo "  $OUT1B/1b_decision.md selects a Test 2 branch of notes/outcome_tree.md from"
+echo "  pre-registered paired contrasts (effect sizes, simultaneous CIs); the"
+echo "  variance decomposition in 1b_decomposition.md is description only."
+echo "  (decision.md in $OUT is analyze.py's premise-check record.)"
 exit $(( FAILED > 0 ? 1 : 0 ))
