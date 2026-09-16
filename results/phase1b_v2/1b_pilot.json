@@ -1,0 +1,99 @@
+{
+ "passed": true,
+ "lr": {
+  "cnn_small": 0.01,
+  "cnn_large": 0.01
+ },
+ "table": [
+  {
+   "predictor": "cnn_small",
+   "lr": 0.01,
+   "n": 84,
+   "excluded": 0.0,
+   "median_rmse_frac": 3.973749123219705e-05,
+   "median_settle_frac": 0.0013278722763061523,
+   "eligible": true
+  },
+  {
+   "predictor": "cnn_small",
+   "lr": 0.003,
+   "n": 84,
+   "excluded": 0.0,
+   "median_rmse_frac": 8.566516470985975e-05,
+   "median_settle_frac": 0.000838160514831543,
+   "eligible": true
+  },
+  {
+   "predictor": "cnn_small",
+   "lr": 0.001,
+   "n": 84,
+   "excluded": 0.0,
+   "median_rmse_frac": 0.00016037233404305717,
+   "median_settle_frac": 0.0006232261657714844,
+   "eligible": true
+  },
+  {
+   "predictor": "cnn_small",
+   "lr": 0.0003,
+   "n": 84,
+   "excluded": 0.0,
+   "median_rmse_frac": 0.0002561411980332749,
+   "median_settle_frac": 0.0003815889358520508,
+   "eligible": true
+  },
+  {
+   "predictor": "cnn_large",
+   "lr": 0.01,
+   "n": 84,
+   "excluded": 0.08333333333333333,
+   "median_rmse_frac": 0.00028159466588603915,
+   "median_settle_frac": 0.0016829371452331543,
+   "eligible": true
+  },
+  {
+   "predictor": "cnn_large",
+   "lr": 0.003,
+   "n": 84,
+   "excluded": 0.0,
+   "median_rmse_frac": 0.0003741107968595486,
+   "median_settle_frac": 0.0011143684387207031,
+   "eligible": true
+  },
+  {
+   "predictor": "cnn_large",
+   "lr": 0.001,
+   "n": 84,
+   "excluded": 0.0,
+   "median_rmse_frac": 0.000549298969341879,
+   "median_settle_frac": 0.001269221305847168,
+   "eligible": true
+  },
+  {
+   "predictor": "cnn_large",
+   "lr": 0.0003,
+   "n": 84,
+   "excluded": 0.0,
+   "median_rmse_frac": 0.0007651802630816919,
+   "median_settle_frac": 0.0011743903160095215,
+   "eligible": true
+  }
+ ],
+ "date": "2026-09-14 22:04:13",
+ "code_md5": "3fac32629d15c82b888f347e758ddf37",
+ "seeds": [
+  900,
+  901
+ ],
+ "scenes": [
+  "fronto_d0.2",
+  "fronto_d1.0",
+  "k3_d2.0"
+ ],
+ "lrs": [
+  0.01,
+  0.003,
+  0.001,
+  0.0003
+ ],
+ "criterion": "exclusion rate <= 0.1, then lowest median interior RMSE / gap; FP never computed"
+}
