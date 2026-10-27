@@ -1,0 +1,212 @@
+{
+ "rows": [
+  {
+   "mode": "heads_only",
+   "views": 2,
+   "resolution": 518,
+   "trainable_params_M": 281.5,
+   "ok": true,
+   "peak_alloc_GiB": 9.47,
+   "peak_reserved_GiB": 10.85,
+   "aggregator_fwd_s": 0.185,
+   "heads_fwd_s": 0.1088,
+   "backward_s": 0.1998,
+   "step_s": 0.4936,
+   "steps_per_s": 2.026,
+   "aggregator_share": 0.375,
+   "note": ""
+  },
+  {
+   "mode": "heads_only",
+   "views": 2,
+   "resolution": 392,
+   "trainable_params_M": 281.5,
+   "ok": true,
+   "peak_alloc_GiB": 8.73,
+   "peak_reserved_GiB": 9.68,
+   "aggregator_fwd_s": 0.1087,
+   "heads_fwd_s": 0.0634,
+   "backward_s": 0.1482,
+   "step_s": 0.3203,
+   "steps_per_s": 3.122,
+   "aggregator_share": 0.339,
+   "note": ""
+  },
+  {
+   "mode": "heads_only",
+   "views": 4,
+   "resolution": 518,
+   "trainable_params_M": 281.5,
+   "ok": true,
+   "peak_alloc_GiB": 12.37,
+   "peak_reserved_GiB": 14.0,
+   "aggregator_fwd_s": 0.4087,
+   "heads_fwd_s": 0.1767,
+   "backward_s": 0.3186,
+   "step_s": 0.904,
+   "steps_per_s": 1.106,
+   "aggregator_share": 0.452,
+   "note": ""
+  },
+  {
+   "mode": "heads_only",
+   "views": 4,
+   "resolution": 392,
+   "trainable_params_M": 281.5,
+   "ok": true,
+   "peak_alloc_GiB": 9.89,
+   "peak_reserved_GiB": 11.16,
+   "aggregator_fwd_s": 0.2117,
+   "heads_fwd_s": 0.1077,
+   "backward_s": 0.2183,
+   "step_s": 0.5377,
+   "steps_per_s": 1.86,
+   "aggregator_share": 0.394,
+   "note": ""
+  },
+  {
+   "mode": "heads_only",
+   "views": 8,
+   "resolution": 518,
+   "trainable_params_M": 281.5,
+   "ok": true,
+   "peak_alloc_GiB": 17.14,
+   "peak_reserved_GiB": 19.12,
+   "aggregator_fwd_s": 0.9685,
+   "heads_fwd_s": 0.3273,
+   "backward_s": 0.5577,
+   "step_s": 1.8535,
+   "steps_per_s": 0.54,
+   "aggregator_share": 0.523,
+   "note": ""
+  },
+  {
+   "mode": "heads_only",
+   "views": 8,
+   "resolution": 392,
+   "trainable_params_M": 281.5,
+   "ok": true,
+   "peak_alloc_GiB": 13.21,
+   "peak_reserved_GiB": 14.64,
+   "aggregator_fwd_s": 0.4793,
+   "heads_fwd_s": 0.1927,
+   "backward_s": 0.348,
+   "step_s": 1.0199,
+   "steps_per_s": 0.98,
+   "aggregator_share": 0.47,
+   "note": ""
+  },
+  {
+   "mode": "full",
+   "views": 2,
+   "resolution": 518,
+   "trainable_params_M": 1190.6,
+   "ok": false,
+   "note": "OOM"
+  },
+  {
+   "mode": "full",
+   "views": 2,
+   "resolution": 392,
+   "trainable_params_M": 1190.6,
+   "ok": false,
+   "note": "OOM"
+  },
+  {
+   "mode": "full",
+   "views": 4,
+   "resolution": 518,
+   "trainable_params_M": 1190.6,
+   "ok": false,
+   "note": "OOM"
+  },
+  {
+   "mode": "full",
+   "views": 4,
+   "resolution": 392,
+   "trainable_params_M": 1190.6,
+   "ok": false,
+   "note": "OOM"
+  },
+  {
+   "mode": "full",
+   "views": 8,
+   "resolution": 518,
+   "trainable_params_M": 1190.6,
+   "ok": false,
+   "note": "OOM"
+  },
+  {
+   "mode": "full",
+   "views": 8,
+   "resolution": 392,
+   "trainable_params_M": 1190.6,
+   "ok": false,
+   "note": "OOM"
+  }
+ ],
+ "budget": [
+  {
+   "mode": "heads_only",
+   "views": 2,
+   "resolution": 518,
+   "peak_alloc_GiB": 9.47,
+   "steps_per_s": 2.026,
+   "hours_per_run": 2.74,
+   "hours_30_runs": 82.3,
+   "days_30_runs": 3.4
+  },
+  {
+   "mode": "heads_only",
+   "views": 2,
+   "resolution": 392,
+   "peak_alloc_GiB": 8.73,
+   "steps_per_s": 3.122,
+   "hours_per_run": 1.78,
+   "hours_30_runs": 53.4,
+   "days_30_runs": 2.2
+  },
+  {
+   "mode": "heads_only",
+   "views": 4,
+   "resolution": 518,
+   "peak_alloc_GiB": 12.37,
+   "steps_per_s": 1.106,
+   "hours_per_run": 5.02,
+   "hours_30_runs": 150.7,
+   "days_30_runs": 6.3
+  },
+  {
+   "mode": "heads_only",
+   "views": 4,
+   "resolution": 392,
+   "peak_alloc_GiB": 9.89,
+   "steps_per_s": 1.86,
+   "hours_per_run": 2.99,
+   "hours_30_runs": 89.6,
+   "days_30_runs": 3.7
+  },
+  {
+   "mode": "heads_only",
+   "views": 8,
+   "resolution": 518,
+   "peak_alloc_GiB": 17.14,
+   "steps_per_s": 0.54,
+   "hours_per_run": 10.29,
+   "hours_30_runs": 308.6,
+   "days_30_runs": 12.9
+  },
+  {
+   "mode": "heads_only",
+   "views": 8,
+   "resolution": 392,
+   "peak_alloc_GiB": 13.21,
+   "steps_per_s": 0.98,
+   "hours_per_run": 5.67,
+   "hours_30_runs": 170.1,
+   "days_30_runs": 7.1
+  }
+ ],
+ "gpu": "NVIDIA RTX 4000 Ada Generation",
+ "total_vram_GiB": 19.55023193359375
+}

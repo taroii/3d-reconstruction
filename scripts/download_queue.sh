@@ -30,25 +30,31 @@ run_job() {
 }
 
 job_weights()   { bash "$SCRIPTS/setup.sh" weights; }
-job_deps()      { "$PIP" install boto3 colorama; }
 job_tartanair() { bash "$SCRIPTS/data_tartanair.sh"; }
 job_eth3d()     { bash "$SCRIPTS/data_eth3d.sh"; }
 
 # Priority order. Weights first: nothing -- not even the memory probe -- can run
 # without them, and they are only ~5 GB. Training data next, evaluation last.
-QUEUE="${*:-weights deps tartanair eth3d}"
+QUEUE="${*:-weights tartanair eth3d}"
+FAILED=""
 
 for j in $QUEUE; do
   case "$j" in
-    weights)   run_job weights   job_weights ;;
-    deps)      run_job deps      job_deps ;;
-    tartanair) run_job tartanair job_tartanair ;;
-    eth3d)     run_job eth3d     job_eth3d ;;
-    *) echo "unknown job: $j" >&2 ;;
+    weights)   run_job weights   job_weights   || FAILED="$FAILED weights" ;;
+    tartanair) run_job tartanair job_tartanair || FAILED="$FAILED tartanair" ;;
+    eth3d)     run_job eth3d     job_eth3d     || FAILED="$FAILED eth3d" ;;
+    *) echo "unknown job: $j" >&2; FAILED="$FAILED $j" ;;
   esac
-  echo "--- pausing ${PAUSE}s before the next job ---"
-  sleep "$PAUSE"
+  # Pause between jobs, but not after the last one.
+  [ "$j" = "${QUEUE##* }" ] || { echo "--- pausing ${PAUSE}s ---"; sleep "$PAUSE"; }
 done
 
 printf '\n\n########## QUEUE DONE %s ##########\n' "$(date -Is)"
+# A queue that runs for hours must not make you scroll back through its output
+# to find out whether anything failed.
+if [ -n "$FAILED" ]; then
+  echo "FAILED JOBS:$FAILED" >&2
+else
+  echo "all jobs succeeded"
+fi
 bash "$SCRIPTS/setup.sh" verify

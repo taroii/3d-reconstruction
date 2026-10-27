@@ -25,13 +25,29 @@ for a in $ARCHIVES; do
   say "$a"
   # -c resumes; -P picks the directory. `wget -c -O file` is the combination
   # GNU wget warns against, because -O truncates on some paths.
-  wget -4 -c -P "$DEST/archives" "$BASE/$a" || { echo "ERROR: $a failed" >&2; exit 1; }
+  #
+  # Retries matter here: the first attempt at this download died instantly on a
+  # transient "GnuTLS: Error in the pull function" and the job gave up, which
+  # on a link this slow means losing a whole queue slot to a blip. The same
+  # URL succeeded on the next attempt at 4-11 MB/s. `--tries` plus a curl
+  # fallback covers both a flaky connection and a genuinely broken TLS
+  # negotiation.
+  if ! wget -4 -c --tries=5 --waitretry=15 --read-timeout=60 \
+            -P "$DEST/archives" "$BASE/$a"; then
+    echo "wget failed for $a; retrying with curl" >&2
+    curl -4 -L --fail --retry 5 --retry-delay 15 --retry-connrefused \
+         -C - -o "$DEST/archives/$a" "$BASE/$a" \
+      || { echo "ERROR: $a failed with both wget and curl" >&2; exit 1; }
+  fi
   mkdir -p "$DEST/archives/$a.d" && mark_done "$DEST/archives/$a.d"
   sleep 15                        # be polite to the shared uplink
 done
 
 # 7z extraction: prefer the system binary, fall back to pure-python py7zr since
 # we have no root on this machine to apt-install p7zip.
+if is_done "$DEST/.extracted"; then
+  echo "already extracted"
+else
 say "extracting"
 if command -v 7z >/dev/null 2>&1; then
   for a in $ARCHIVES; do 7z x -y -o"$DEST" "$DEST/archives/$a" >/dev/null || exit 1; done
@@ -48,6 +64,9 @@ with py7zr.SevenZipFile(sys.argv[1], "r") as z:
 print("extracted", sys.argv[1])
 PYEOF
   done
+fi
+
+mkdir -p "$DEST/.extracted" && mark_done "$DEST/.extracted"
 fi
 
 say "layout"

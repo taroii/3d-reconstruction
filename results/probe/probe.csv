@@ -1,0 +1,13 @@
+aggregator_fwd_s,aggregator_share,backward_s,heads_fwd_s,mode,note,ok,peak_alloc_GiB,peak_reserved_GiB,resolution,step_s,steps_per_s,trainable_params_M,views
+0.185,0.375,0.1998,0.1088,heads_only,,True,9.47,10.85,518,0.4936,2.026,281.5,2
+0.1087,0.339,0.1482,0.0634,heads_only,,True,8.73,9.68,392,0.3203,3.122,281.5,2
+0.4087,0.452,0.3186,0.1767,heads_only,,True,12.37,14.0,518,0.904,1.106,281.5,4
+0.2117,0.394,0.2183,0.1077,heads_only,,True,9.89,11.16,392,0.5377,1.86,281.5,4
+0.9685,0.523,0.5577,0.3273,heads_only,,True,17.14,19.12,518,1.8535,0.54,281.5,8
+0.4793,0.47,0.348,0.1927,heads_only,,True,13.21,14.64,392,1.0199,0.98,281.5,8
+,,,,full,OOM,False,,,518,,,1190.6,2
+,,,,full,OOM,False,,,392,,,1190.6,2
+,,,,full,OOM,False,,,518,,,1190.6,4
+,,,,full,OOM,False,,,392,,,1190.6,4
+,,,,full,OOM,False,,,518,,,1190.6,8
+,,,,full,OOM,False,,,392,,,1190.6,8

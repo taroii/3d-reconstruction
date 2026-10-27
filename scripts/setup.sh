@@ -62,7 +62,8 @@ stage_env() {
     numpy scipy matplotlib pillow tqdm \
     einops safetensors huggingface_hub \
     opencv-python-headless h5py imageio \
-    trimesh scikit-image pandas
+    trimesh scikit-image pandas \
+    iopath hydra-core omegaconf       # required by vggt/training/loss.py
 
   echo "environment ready: $ENV_PREFIX"
 }
@@ -110,12 +111,17 @@ stage_data() {
 Datasets are downloaded by their own scripts so each can be run, resumed and
 timed independently -- `setup.sh data` only dispatches to them:
 
-  scripts/data_sintel.sh        ~6 GB    zero-shot eval
-  scripts/data_tartanair.sh     ~60 GB   training (stop after ~8 environments)
-  scripts/data_pointodyssey.sh  ~185 GB  training
+  scripts/data_tartanair.sh   ~17.5 GB compressed (~75 GB extracted)  TRAINING
+  scripts/data_eth3d.sh       ~7.3 GB                                 EVAL
 
-Run them individually inside tmux. They are not chained here because a failure
-200 GB into a chain is worse than one that stops at its own stage.
+Run them through `scripts/download_queue.sh`, which serialises them: this host
+is on a home uplink that sustains ~2 MB/s alone and collapses to ~70 KB/s when
+transfers compete.
+
+PointOdyssey and Sintel are deliberately NOT here. PointOdyssey was the dynamic
+training source and the dynamic framing was dropped; Sintel's depth archive is
+no longer served by MPI and ETH3D is a better zero-shot set anyway because it is
+real rather than synthetic. See decision_log.md D18/D19.
 NOTE
 }
 
@@ -140,7 +146,7 @@ PYEOF
   fi
   printf 'vggt          %s\n' "$([ -d "$PROJ/third_party/vggt/.git" ] && echo present || echo MISSING)"
   printf 'checkpoint    %s\n' "$([ -f "$PROJ/ckpt/model.safetensors" ] && du -h "$PROJ/ckpt/model.safetensors" | cut -f1 || echo MISSING)"
-  for d in sintel tartanair pointodyssey; do
+  for d in tartanair eth3d; do
     printf 'data/%-9s %s\n' "$d" "$([ -d "$PROJ/data/$d" ] && du -sh "$PROJ/data/$d" 2>/dev/null | cut -f1 || echo MISSING)"
   done
   printf 'disk free     %s\n' "$(df -h "$PROJ" | tail -1 | awk '{print $4}')"

@@ -6,7 +6,11 @@ data/
 # real-data phase: heavy / generated, never commit
 DDUSt3R/checkpoints/
 cache/
-results/
+# results/ is heavy by default (figures, dumps), but the small machine-readable
+# outputs that back claims in the paper are durable artifacts and belong in git.
+results/*
+!results/estimator_diag/
+!results/probe/
 archive/
 *.pth
 *.zip
