@@ -23,3 +23,10 @@ mast3r/
 *.fls
 *.fdb_latexmk
 archive/
+# working notes, not part of the record
+decision_log.md
+
+# paper/ -- internal working notes (drafts, reviews, reference PDFs).
+# NOTE: these were tracked and pushed publicly before this line existed, so
+# ignoring them only stops FUTURE changes being tracked. See decision_log.md D26.
+paper/
